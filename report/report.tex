@@ -3,7 +3,7 @@
 %
 % HOW TO COMPILE (e.g. Overleaf):
 %   1. Create a new project and paste this file as main.tex.
-%   2. Create a folder "figures/" and upload these PNGs from results/figures/ in the repo:
+%   2. Upload these PNGs (they are in this report/ folder) next to main.tex, not in a subfolder:
 %        eda_class_mean_images.png   eda_tsne.png               features_hog_examples.png
 %        results_pixels_vs_hog.png   results_acc_vs_time.png    results_recall_heatmap.png
 %        errors_confusion_rbf_svm_hog.png   errors_misclassified_shirt_vs_t-shirt_top.png
@@ -20,7 +20,6 @@
 \usepackage{url}
 \usepackage{cite}
 \usepackage[hidelinks]{hyperref}
-\graphicspath{{figures/}}
 
 \begin{document}
 
@@ -29,36 +28,31 @@
 
 \author{
 \IEEEauthorblockN{Tanmay Singh}
-\IEEEauthorblockA{2401010476}
 \and
 \IEEEauthorblockN{Anand Mishra}
-\IEEEauthorblockA{2401010065}
 \and
 \IEEEauthorblockN{Rajdeep Sanyal}
-\IEEEauthorblockA{2401010370}
 \and
 \IEEEauthorblockN{Rajat Srivastav}
-\IEEEauthorblockA{2401020101}
 \and
 \IEEEauthorblockN{Omved Nagre}
-\IEEEauthorblockA{2401010311}
 \and
 \IEEEauthorblockA{TODO: Department, University\\TODO: Course name and code}
 }
 
 \maketitle
 
-% -------------------------------------------------------------------------------------
+% =====================================================================================
 \begin{abstract}
 We measure how well classical machine learning classifies clothing images in Fashion-MNIST, and why it fails where it
 fails. Five classifiers (Logistic Regression, $k$-Nearest Neighbours, Random Forest, Linear SVM and RBF SVM) and a dummy
 baseline are trained on two feature sets: raw pixels and Histograms of Oriented Gradients (HOG). Every choice
 (hyperparameters, HOG settings and the final model) is made on a fixed, stratified 6,000-image validation split, and the
 10,000-image test set is used exactly once per experiment, recorded in an audit log. The best model by validation
-accuracy, an RBF SVM on HOG features, reaches \textbf{91.08\%} test accuracy. HOG improves the linear models by 4--5
+accuracy, an RBF SVM on HOG features, reaches \textbf{91.08\%} test accuracy. HOG improves the linear models by 4 to 5
 points but does not help Random Forest or $k$-NN. The RBF SVM is about 2,400 times slower to predict than a Random Forest
 that is only 3.5 points less accurate. Error analysis shows that mistakes among four upper-body garments (T-shirt/top,
-Pullover, Coat and Shirt) make up 56--66\% of every model's errors, with Shirt the hardest class for all ten trained
+Pullover, Coat and Shirt) make up 56 to 66\% of every model's errors, with Shirt the hardest class for all ten trained
 models. These limits of fixed, handcrafted features motivate a convolutional network in the next phase of the project.
 \end{abstract}
 
@@ -67,7 +61,7 @@ Fashion-MNIST, image classification, HOG, support vector machines, random forest
 error analysis
 \end{IEEEkeywords}
 
-% -------------------------------------------------------------------------------------
+% =====================================================================================
 \section{Introduction}
 An online clothing catalogue that tags product photos automatically needs a classifier that is accurate, fast and small.
 Deep networks are the usual answer today, but they are not always necessary, and a fair comparison needs a strong,
@@ -87,7 +81,7 @@ audit log; (ii) a validation-only selection protocol that also corrects an unfai
 different amounts of data; (iii) a speed analysis that counts feature-extraction cost; and (iv) an error analysis that
 links model mistakes back to the exploratory data analysis.
 
-% -------------------------------------------------------------------------------------
+% =====================================================================================
 \section{Background}
 \textbf{Classifiers.} Logistic Regression is a linear model trained with cross-entropy and an L2 penalty whose strength
 is controlled by $C$ (smaller $C$ means stronger regularisation). $k$-NN~\cite{cover1967nearest} stores the training set
@@ -108,13 +102,13 @@ optimistic~\cite{cawley2010overfitting}, which is why we report the untouched te
 
 All models use scikit-learn~\cite{pedregosa2011scikit}; HOG uses scikit-image~\cite{vanderwalt2014scikit}.
 
-% -------------------------------------------------------------------------------------
+% =====================================================================================
 \section{Data and Experimental Protocol}
 \subsection{Dataset}
 Fashion-MNIST has 70,000 grayscale $28\times28$ images in 10 balanced classes: T-shirt/top, Trouser, Pullover, Dress,
 Coat, Sandal, Shirt, Sneaker, Bag and Ankle boot (60,000 training and 10,000 test images). The four official files are
 downloaded over HTTPS and verified against the published MD5 checksums. Sanity checks confirm the shapes, the label range
-0--9, no missing values, exactly 6,000 training and 1,000 test images per class, and no exact duplicate images inside or
+0 to 9, no missing values, exactly 6,000 training and 1,000 test images per class, and no exact duplicate images inside or
 across the training and test sets.
 
 \subsection{Fixed split}
@@ -140,12 +134,12 @@ For each model and feature set we (1) fit every grid combination on the 54k trai
 images; and (4) evaluate it once on test, recording accuracy, macro F1, per-class precision and recall, the confusion
 matrix, training time, prediction time per 1,000 images (best of three runs), and model size (bytes of the pickled model).
 
-% -------------------------------------------------------------------------------------
+% =====================================================================================
 \section{Exploratory Data Analysis}
 Pixel values are mostly background: PCA needs 84 of 784 components to keep 90\% of the variance and 188 to keep 95\%,
 so raw pixels are highly redundant. Fig.~\ref{fig:eda} shows the class-mean images and a t-SNE~\cite{vandermaaten2008tsne}
 map of the training split. The mean images of the upper-body garments are almost identical: the cosine similarity is 0.987
-for Coat--Shirt, 0.984 for Pullover--Coat, 0.983 for Pullover--Shirt and 0.950 for T-shirt/top--Shirt. In the t-SNE map,
+for Coat and Shirt, 0.984 for Pullover and Coat, 0.983 for Pullover and Shirt, and 0.950 for T-shirt/top and Shirt. In the t-SNE map,
 Pullover, Coat and Shirt form one mixed cloud, while Trouser and Bag form clean, isolated clusters. Before training any
 model, the EDA therefore predicted that Shirt would have the lowest recall.
 
@@ -158,7 +152,7 @@ model, the EDA therefore predicted that Shirt would have the lowest recall.
   \label{fig:eda}
 \end{figure}
 
-% -------------------------------------------------------------------------------------
+% =====================================================================================
 \section{Features}
 \textbf{Pixels.} Each image is flattened to a 784-dimensional vector with values in $[0,1]$. Flattening discards the 2-D
 neighbourhood: a garment shifted by two pixels becomes a very different vector.
@@ -166,7 +160,7 @@ neighbourhood: a garment shifted by two pixels becomes a very different vector.
 \textbf{HOG settings sweep.} We tried $3\times2\times2=12$ HOG configurations: orientations $\{6,9,12\}$, cell size
 $\{4\times4, 7\times7\}$ pixels and block size $\{1\times1, 2\times2\}$ cells. Each was scored by a fast proxy (a linear SVM
 trained with SGD and hinge loss) fitted on training features and scored on validation (Table~\ref{tab:hog}). Small cells
-win by 4--8 points, block normalisation adds 2--3 points and more orientation bins help slightly. The rule fixed in advance
+win by 4 to 8 points, block normalisation adds 2 to 3 points and more orientation bins help slightly. The rule fixed in advance
 was ``highest validation accuracy; within 0.3 points prefer the smaller vector''. The winner (12 orientations, $4\times4$
 cells, $2\times2$ blocks, 1,728 dimensions, 0.8818) beats the 1,296-dimensional runner-up (0.8783) by 0.35 points, so it
 was chosen. Extraction costs about 0.22\,s per 1,000 images.
@@ -202,12 +196,12 @@ was chosen. Extraction costs about 0.22\,s per 1,000 images.
 inside their pipeline. Random Forest splits one feature at a time on a threshold, which rescaling does not change, so it
 uses no scaler.
 
-% -------------------------------------------------------------------------------------
+% =====================================================================================
 \section{Models and Tuning}
 Table~\ref{tab:grids} lists the validation grids and the selected settings. Two practical constraints shaped tuning on an
 8\,GB laptop. First, the RBF SVM's training time grows faster than linearly with data, so its 9-combination grid was
 searched on a stratified 10,000-image subset (1,000 per class), and only the selected setting was refit on all 60,000
-images. Second, Linear SVM fits on 54,000 images took 105--924\,s, growing sharply with $C$.
+images. Second, Linear SVM fits on 54,000 images took 105 to 924\,s, growing sharply with $C$.
 
 \begin{table}[t]
   \centering
@@ -237,9 +231,9 @@ and 0.9157 (HOG). With all scores on an equal footing, the validation ranking is
 \textbf{Observations.} The best $C$ sits at the edge of the grid for Logistic Regression and Linear SVM (0.01, the
 smallest) and for the RBF SVM (10, the largest). We did not widen the grids afterwards, to avoid another round of test
 evaluation; this is a limitation. For the RBF SVM, $\gamma=0.01$ is far too narrow for standardised 784- or
-1,728-dimensional inputs: HOG validation accuracy collapses to 11--29\%.
+1,728-dimensional inputs: HOG validation accuracy collapses to 11 to 29\%.
 
-% -------------------------------------------------------------------------------------
+% =====================================================================================
 \section{Results}
 Table~\ref{tab:results} lists all 12 experiments. Pixel results are in line with the baselines reported with the
 dataset~\cite{xiao2017fashion}.
@@ -275,7 +269,7 @@ dataset~\cite{xiao2017fashion}.
 
 \subsection{RQ1: Raw pixels}
 The best pixel model is the RBF SVM at 89.70\%. Random Forest reaches 87.56\%, $k$-NN 86.11\%, and the linear models
-only 83.78--84.72\%. A single pixel only records the brightness of one location, so a linear boundary in pixel space cannot
+only 83.78 to 84.72\%. A single pixel only records the brightness of one location, so a linear boundary in pixel space cannot
 capture shape.
 
 \subsection{RQ2: HOG vs.\ pixels}
@@ -314,16 +308,16 @@ pixel RBF SVM is real but modest. A stratified 5-fold cross-validation on a 10,0
 validation data gives $0.8775\pm0.0054$ (folds 0.8765, 0.8860, 0.8715, 0.8725, 0.8810). The low spread shows the model is
 stable across data partitions; the lower mean is expected because each fold trains on only 8,000 images.
 
-% -------------------------------------------------------------------------------------
+% =====================================================================================
 \section{Error Analysis (RQ4)}
 \textbf{Per-class recall.} Shirt is the hardest class for all ten trained models, with recall from 50.9\% (Linear SVM,
-pixels) to 75.2\% (RBF SVM, HOG). Pullover (73.5--84.9\%) and Coat (76.4--86.3\%) follow. Trouser, Bag, Sandal, Sneaker
+pixels) to 75.2\% (RBF SVM, HOG). Pullover (73.5 to 84.9\%) and Coat (76.4 to 86.3\%) follow. Trouser, Bag, Sandal, Sneaker
 and Ankle boot are easy for every model (Fig.~\ref{fig:errors}, left).
 
 \textbf{Top confusions of the best model.} From the saved confusion matrix (1,000 test images per class): Shirt\,$\rightarrow$\,T-shirt/top
 (104), T-shirt/top\,$\rightarrow$\,Shirt (91), Pullover\,$\rightarrow$\,Shirt (66), Pullover\,$\rightarrow$\,Coat (61) and
 Shirt\,$\rightarrow$\,Coat (59) (Fig.~\ref{fig:errors}, right). Mistakes among T-shirt/top, Pullover, Coat and Shirt
-account for 56--66\% of every trained model's errors. This is exactly the group the EDA flagged before any model was
+account for 56 to 66\% of every trained model's errors. This is exactly the group the EDA flagged before any model was
 trained.
 
 \begin{figure*}[t]
@@ -352,13 +346,13 @@ therefore fixes 138 more images than it breaks, exactly the 1.38-point test gap.
 \emph{same} wrong label and 397 are upper-body garments. When two models built on very different features make the same
 mistake, the image itself is likely ambiguous rather than the model unlucky.
 
-% -------------------------------------------------------------------------------------
+% =====================================================================================
 \section{Discussion and Limitations}
 \begin{itemize}
   \item \textbf{Grid edges.} Three models selected a value at the edge of their grid; wider grids might add a little
         accuracy. We kept the planned grids to avoid extra test evaluations.
   \item \textbf{Optimistic validation.} Validation accuracy is above test accuracy for all ten trained models (by
-        0.02--2.05 points), as expected when the best of several settings is selected on validation~\cite{cawley2010overfitting}.
+        0.02 to 2.05 points), as expected when the best of several settings is selected on validation~\cite{cawley2010overfitting}.
         The ranking is unchanged, and the untouched test score is what we report.
   \item \textbf{Timing.} Timings come from two laptops (Apple M3 and M3 Pro) and two Logistic Regression timings are
         excluded, so only large speed gaps (10$\times$ or more) should be read as firm.
@@ -366,7 +360,7 @@ mistake, the image itself is likely ambiguous rather than the model unlucky.
         accuracy.
 \end{itemize}
 
-% -------------------------------------------------------------------------------------
+% =====================================================================================
 \section{Conclusion and Future Work}
 On Fashion-MNIST, a carefully tuned classical pipeline reaches 91.08\% test accuracy with an RBF SVM on HOG features,
 chosen without ever using the test set for a decision. HOG features are the single biggest help for linear models, but
@@ -383,7 +377,7 @@ behind every choice are available at
 \url{https://github.com/rajdeep-2004/fashion-image-classification-benchmark}. A fresh clone regenerates every result in
 under two minutes.
 
-% -------------------------------------------------------------------------------------
+% =====================================================================================
 \begin{thebibliography}{99}
 
 \bibitem{xiao2017fashion}
