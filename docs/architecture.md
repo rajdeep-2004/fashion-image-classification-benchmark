@@ -1,6 +1,6 @@
 # Architecture
 
-> Last updated: 2026-10-24 — Static structure of the project. Runtime behavior (pipeline order, leakage controls) lives in system-design.md.
+> Last updated: 2026-10-26 — Static structure of the project. Runtime behavior (pipeline order, leakage controls) lives in system-design.md.
 
 ## 1. Overview
 This is an offline machine-learning **pipeline**, not an app. It has no server, no database and no users online.
@@ -38,19 +38,25 @@ flowchart LR
 ## 4. Codebase layout
 ```
 fashion-image-classification-benchmark/
-├── README.md                  # setup, run order, results table
+├── README.md                  # setup, run order, results table, team
+├── AGENTS.md                  # rules for every contributor and AI tool
+├── CONTRIBUTING.md            # step-by-step contributor workflow
+├── CLAUDE.md                  # project instructions for Claude Code (includes AGENTS.md)
+├── idea.md                    # early brainstorming (not instructions; docs/ wins)
 ├── requirements.txt           # pinned top-level deps
+├── .github/pull_request_template.md
 ├── src/                       # ALL reusable logic. No plotting-only code, no notebooks.
 │   ├── __init__.py
 │   ├── config.py              # constants: SEED, paths, class names, split sizes, HOG params, N_JOBS
-│   ├── utils.py               # set_seed(), Timer, save_fig()
+│   ├── utils.py               # set_seed(), Timer, save_fig(), save_json(), display_path()
 │   ├── data.py                # download + MD5 check, IDX loader, sanity checks, split, load_splits()
 │   ├── features.py            # pixel + HOG extractors, get_features() with disk cache
-│   ├── evaluate.py            # evaluate() → metrics dict + JSON; model_size_bytes()
-│   ├── experiment.py          # tune_on_val(), final_test_run() (the only code that reads test)
+│   ├── evaluate.py            # evaluate() → metrics dict + JSON; model size; environment info
+│   ├── experiment.py          # tune_on_val(), full_train_val_score(), final_test_run() (the only code that
+│   │                          #   reads test features), cross_validate_best()
 │   ├── models_linear.py       # make_dummy(), make_logreg(), make_knn() → sklearn Pipelines
 │   ├── models_tree_kernel.py  # make_rf(), make_linear_svm(), make_rbf_svm() → sklearn Pipelines
-│   └── results.py             # aggregate JSONs → summary.csv; comparison + error-analysis plots
+│   └── results.py             # summary.csv, best-model choice, comparison + error-analysis plots (saved predictions)
 ├── notebooks/                 # thin: import from src, run steps, show plots, write explanations
 │   ├── 01_data_eda.ipynb
 │   ├── 02_features.ipynb
@@ -62,7 +68,7 @@ fashion-image-classification-benchmark/
 │   └── splits/val_indices.npy # the fixed 6k validation indices     (COMMITTED)
 ├── features/                  # cached feature matrices             (gitignored)
 ├── results/                   # COMMITTED: what the professor reads
-│   ├── metrics/               # one JSON per experiment (val tuning tables + test metrics)
+│   ├── metrics/               # per experiment: _val.json (tuning), _test.json; plus rbf_svm_*_val_full.json, rbf_svm_hog_cv.json
 │   ├── figures/               # every PNG used in the report/slides
 │   ├── test_log.csv           # audit log: one row each time the test set is evaluated
 │   ├── hog_sweep.csv          # HOG config sweep (val accuracy per config)
@@ -85,12 +91,13 @@ Rules for folders:
 | `models_*.py` | Building unfitted sklearn `Pipeline`s from hyperparameters | `config` | Load data or train |
 | `experiment.py` | Tuning on train→val; refit on 60k; the single test evaluation | `features`, `evaluate`, `models_*` | Use test data inside `tune_on_val()` |
 | `evaluate.py` | Metrics, timing, model size, writing JSON | `config`, `utils` | Choose hyperparameters |
-| `results.py` | Reading JSONs, building `summary.csv` and plots | `config`, `utils` | Retrain models |
+| `results.py` | Reading JSONs, building `summary.csv`, picking the best model by val, plots and error analysis | `config`, `utils`, `data` (test labels/images for error analysis) | Retrain models or predict on test |
 
 ## 6. Layering rules
 `notebooks → experiment → (features, models_*, evaluate) → data → config/utils`.
 Lower layers never import higher ones. Notebooks may call any `src` function.
-Only `experiment.final_test_run()` (and `data.py` sanity checks, which use no labels for decisions) touch test data.
+Only `experiment.final_test_run()` predicts on test data. The other readers never influence a choice: the `data.py` sanity
+checks, and phase 05's error analysis in `results.py`, which reads the saved `y_pred` plus the true test labels/images (D-011, D-032).
 
 ## 7. External services
 | Service | Used for | Failure impact |
@@ -117,4 +124,4 @@ There are no environment variables or secrets. All settings are constants in `sr
 | `TEST_LOG_PATH`, `HOG_SWEEP_PATH` | Where the test audit log and HOG sweep table live | `results/test_log.csv`, `results/hog_sweep.csv` |
 | `N_JOBS` | Parallel workers, capped for 8 GB RAM | `4` |
 | `CLASS_NAMES` | 10 label names | `["T-shirt/top", …, "Ankle boot"]` |
-| Paths | `DATA_DIR`, `FEATURES_DIR`, `RESULTS_DIR`, … | `Path(__file__).parents[1] / "data"` |
+| Paths | `DATA_RAW`, `SPLITS_DIR`, `FEATURES_DIR`, `RESULTS_DIR`, `METRICS_DIR`, `FIGURES_DIR`, … | `ROOT / "data" / "raw"` |

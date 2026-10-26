@@ -1,6 +1,6 @@
 # System Design
 
-> Last updated: 2026-10-24 — How the pipeline behaves when it runs: order of steps, how leakage is prevented, what can fail. Structure lives in architecture.md.
+> Last updated: 2026-10-26 — How the pipeline behaves when it runs: order of steps, how leakage is prevented, what can fail. Structure lives in architecture.md.
 
 ## 1. Requirements that drive the design
 | Requirement | Target | Why it matters |
@@ -69,7 +69,9 @@ Notes:
 `results.py` reads every `*_test.json` and builds `summary.csv` and the comparison plots.
 The "best model" for error analysis and 5-fold CV is chosen by **val accuracy, not test accuracy**. All val scores must come
 from models trained on the full 54k train split: for subset-tuned RBF SVM that's `_val_full.json`, written by
-`experiment.full_train_val_score()` (D-029). Current best: `rbf_svm_hog` (val 0.9157).
+`experiment.full_train_val_score()` (D-029). Result: `rbf_svm_hog` (val 0.9157).
+Error analysis reads the saved `confusion_matrix` / `y_pred` of each test JSON plus the true test labels/images from
+`load_splits()`; nothing is predicted again (D-011, D-032). 5-fold CV of the best model runs on a 10k stratified subset of `trainval`.
 
 ## 3. Leakage controls (the core of this design)
 | Possible loophole | How we close it |
@@ -83,11 +85,12 @@ from models trained on the full 54k train split: for subset-tuned RBF SVM that's
 | Stale features after a param change | HOG params are encoded in the cache filename |
 | Peeking at test repeatedly | Each experiment has one `final_test_run`, and every call is logged to `test_log.csv` |
 | CV folds leaking scaling | CV runs `cross_val_score` on the whole Pipeline, so the scaler is refit per fold |
+| Error analysis re-using test | Phase 05 reads saved predictions only; no model predicts on test again (D-011, D-032) |
 | Duplicate images across train/val/test | Counted and reported in the sanity checks. Not removed, so results stay comparable to published benchmarks (D-004) |
 
 ## 4. Concurrency and race conditions
 None that matter: one person runs one notebook at a time. Parallelism is limited to sklearn's
-`n_jobs=config.N_JOBS` (4) inside RF, kNN and CV.
+`n_jobs=config.N_JOBS` (4) inside RF and kNN. CV runs its folds one after another (`n_jobs=1`, D-018).
 
 ## 5. Async work and realtime
 Not applicable.
@@ -106,7 +109,7 @@ Not applicable.
 | Corrupted / wrong file | MD5 mismatch | Delete the file and stop with an error. The next run re-downloads it. |
 | Feature cache missing | File not found | Built automatically. |
 | Out of memory (SVM/kNN) | Kernel crash | Lower `N_JOBS`, use `SVM_TUNE_SUBSET`, and close other apps. Documented in the README. |
-| RBF SVM too slow | Wall-clock time | Tune on the 10k subset. The final 60k fit is run once and may take ~10–30 min. |
+| RBF SVM too slow | Wall-clock time | Tune on the 10k subset. The final 60k fit is run once: 196 s (pixels) and 451 s (HOG) on an M3 Pro. |
 | Model doesn't converge (LR) | sklearn `ConvergenceWarning` | Raise `max_iter`. The warning is left visible, not suppressed. |
 
 ## 8. Security
@@ -128,5 +131,5 @@ If they get too slow, the mitigation is the documented subset, or PCA-reduced pi
 |---|---|---|
 | Single holdout val (6k) instead of k-fold for tuning | 6k is large enough for stable estimates, and it's simple and fast. k-fold is used once on the best model to show stability. | Val scores of two configs are within ~0.3% of each other |
 | RBF SVM tuned on 10k, not 54k | Full-size tuning would take hours on a laptop | Never for v1. It's documented in the report. |
-| Timing measured on a laptop with `n_jobs=4` | Same machine for every model gives a fair relative comparison | Phase 2 GPU timings (report them separately) |
+| Timing measured on laptops with `n_jobs=4` | Phase 03 ran on an Apple M3 and phase 04 on an M3 Pro; gaps of 10× or more are still clear, small gaps are approximate (D-028) | A single-machine re-timing, or Phase 2 GPU timings (report them separately) |
 | Duplicates kept | Matches the official benchmark protocol | Sanity checks find a large number of duplicates |

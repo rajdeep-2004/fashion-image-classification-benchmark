@@ -22,6 +22,10 @@ each phase starts. Full workflow: [`AGENTS.md`](../AGENTS.md) §6.
 
 ## Session log
 <!-- Newest first. 2–4 lines per session. Keep only the last ~10 sessions; older ones are in git history. -->
+### 2026-10-26 (v1 end-to-end audit + README, lead)
+- Audited code, results and every doc against each other: interfaces, 27 result files, test log (12 rows), split MD5 and all 32 figures consistent. Fixed outdated docs (architecture, system-design, interfaces, formats, PRD facts), completed 7 older decision entries, added a D-029 pointer in notebook 04.
+- Rebuilt README.md (results table generated from summary.csv, findings, leakage rules, limitations, team table).
+
 ### 2026-10-26 (v1 complete, lead)
 - Merged PR #4 (v1/05 Part B). Phase 05 done; v1 (classical ML benchmark) complete: 12 experiments, best by val rbf_svm_hog (val 0.9157, test 0.9108), README reproduces everything from a fresh clone.
 - Next: tag `v1.0.0` (when the lead decides), report and slides, then plan capstone Phase 2 in `docs/phases/v2/`.

@@ -11,7 +11,8 @@ Random Forest and SVM on two feature sets (raw pixels and HOG), measure accuracy
 classes get confused and why. It is an **offline Python pipeline**: `src/` modules + Jupyter notebooks. There is no app,
 no server and no database.
 
-The work is split into **5 phases**, each owned by one person and delivered as one Pull Request:
+The work is split into **5 phases**, each normally owned by one person and delivered as one Pull Request (phase 05 was
+split into two PRs, D-031). v1 is complete; owners are in `docs/progress.md`:
 
 | Phase | File | Builds |
 |---|---|---|
@@ -53,7 +54,7 @@ and activate it instead.
 These are what the professor will check. Breaking any of them invalidates our results.
 1. **The test set is used once per experiment**, only through `src.experiment.final_test_run()`. Never call
    `get_features(..., "test")` or use `X_test` anywhere else (exceptions: the `data.py` sanity checks and phase 05
-   reading the stored `y_pred`).
+   error analysis, which reads the stored `y_pred` plus the true test labels/images and never predicts again).
 2. **All choices are made on the validation set.** This covers hyperparameters, HOG settings and which model is "best". Never pick anything by test score.
 3. **Scalers live inside sklearn `Pipeline`s** (in `models_*.py`). Never call `StandardScaler().fit(...)` on its own.
 4. **EDA uses the train split only.**

@@ -1,6 +1,6 @@
 # Module Interfaces
 
-> Last updated: 2026-10-24 — What each shared function in `src/` takes and returns.
+> Last updated: 2026-10-26 — What each shared function in `src/` takes and returns.
 > This project has no API. These functions are the agreements between phases. Change a signature here **before**
 > changing the code, and update every caller (see D-010). File formats are in `data-formats.md`.
 
@@ -11,7 +11,7 @@ Conventions:
 
 ## `src/config.py` — constants only
 `SEED = 42`, `VAL_SIZE = 6000`, `SVM_TUNE_SUBSET = 10000`, `N_JOBS = 4`, `LOGREG_MAX_ITER = 5000`, `CLASS_NAMES` (10 str),
-`HOG_PARAMS` (dict), `RAW_URL_BASE`, `RAW_FILES` (filename → MD5), and paths `ROOT`, `DATA_RAW`, `SPLITS_DIR`,
+`NUM_CLASSES = 10`, `IMAGE_SIZE = 28`, `HOG_PARAMS` (dict), `FIGURE_DPI = 300`, `RAW_URL_BASE`, `RAW_FILES` (filename → MD5), and paths `ROOT`, `DATA_RAW`, `SPLITS_DIR`,
 `VAL_INDICES_PATH`, `FEATURES_DIR`, `METRICS_DIR`, `FIGURES_DIR`, `RESULTS_DIR`, `TEST_LOG_PATH`, `HOG_SWEEP_PATH`.
 Modules read these at call time (`config.X` inside functions), so a scratch check can point them at a temp folder.
 
@@ -50,10 +50,11 @@ Every function returns a **new, unfitted** `sklearn.pipeline.Pipeline`. Scaling 
 | `make_logreg(C)` | C | `StandardScaler` → `LogisticRegression(max_iter=LOGREG_MAX_ITER, random_state=SEED)` |
 | `make_knn(n_neighbors, weights, metric)` | k, weights, metric | `StandardScaler` → `KNeighborsClassifier(n_jobs=N_JOBS)` |
 | `make_rf(n_estimators, max_depth, max_features)` | as named | `RandomForestClassifier(random_state=SEED, n_jobs=N_JOBS)` (no scaler, as trees don't need one) |
-| `make_linear_svm(C)` | C | `StandardScaler` → `LinearSVC(random_state=SEED)` |
-| `make_rbf_svm(C, gamma)` | C, gamma | `StandardScaler` → `SVC(kernel="rbf")` |
+| `make_linear_svm(C)` | C | `StandardScaler` → `LinearSVC(dual="auto", random_state=SEED)` (D-026) |
+| `make_rbf_svm(C, gamma)` | C, gamma | `StandardScaler` → `SVC(kernel="rbf", random_state=SEED)` |
 
-Default tuning grids live next to these functions as constants (e.g. `KNN_GRID`), copied from the PRD/idea.md.
+Tuning grids live next to these functions as constants: `LOGREG_GRID`, `KNN_GRID` (`models_linear.py`); `RF_GRID`,
+`LINEAR_SVM_GRID`, `RBF_SVM_GRID` (`models_tree_kernel.py`). Changing a grid needs a decisions.md entry (AGENTS.md §4).
 
 Model files only build unfitted Pipelines and hold grids. Figures (e.g. the LR weight maps) live in the notebooks (D-025).
 

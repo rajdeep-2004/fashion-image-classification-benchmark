@@ -1,6 +1,7 @@
 # Contributing: a step-by-step guide for team members
 
-Welcome! This project is built in **5 phases**, and each team member owns one phase from start to Pull Request.
+Welcome! This project is built in **phases**, and each team member normally owns one phase from start to Pull Request
+(a large phase can be split into two PRs, as phase 05 was, D-031).
 This guide walks you through it in order. The **rules** (what you must and must not do) are in [`AGENTS.md`](AGENTS.md);
 read that too, especially §4 "no-leakage rules".
 

@@ -1,7 +1,7 @@
 # Fashion-MNIST Classical ML Benchmark (Capstone Phase 1)
 
 Leak-free, reproducible benchmark of classical ML (LR, kNN, RF, SVM) on raw pixels vs HOG features for Fashion-MNIST,
-with error analysis that motivates the Phase 2 CNN. Built by a 5-person student team, one phase per person, delivered as PRs. Details: `docs/prd.md`.
+with error analysis that motivates the Phase 2 CNN. Built by a 5-person student team, normally one phase per person (phase 05 split in two, D-031), delivered as PRs. v1 is complete. Details: `docs/prd.md`.
 
 ## Shared rules for all contributors and agents
 @AGENTS.md
