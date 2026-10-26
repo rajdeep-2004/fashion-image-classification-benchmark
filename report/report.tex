@@ -1,181 +1,256 @@
 % =====================================================================================
-% Fashion-MNIST Classical ML Benchmark: Capstone Phase 1 report (IEEE conference format)
+% Fashion-MNIST Classical ML Benchmark -- Capstone Phase 1 Report (IEEE conference format)
 %
-% HOW TO COMPILE (e.g. Overleaf):
-%   1. Create a new project and paste this file as main.tex.
-%   2. Upload these PNGs (they are in this report/ folder) next to main.tex, not in a subfolder:
+% COMPILE (Overleaf):
+%   1. New project -> paste this file as main.tex.
+%   2. Upload these 8 PNGs next to main.tex (same folder, not a subfolder):
 %        eda_class_mean_images.png   eda_tsne.png               features_hog_examples.png
 %        results_pixels_vs_hog.png   results_acc_vs_time.png    results_recall_heatmap.png
 %        errors_confusion_rbf_svm_hog.png   errors_misclassified_shirt_vs_t-shirt_top.png
-%   3. Compile with pdfLaTeX. IEEEtran is built into Overleaf.
-%   4. Fill in the TODO lines (university / department / course).
-% Every number below comes from results/summary.csv and results/metrics/*.json in the repo.
+%   3. Compiler: pdfLaTeX. IEEEtran ships with Overleaf.
+%
+% Every number comes from results/summary.csv, results/metrics/*.json and the saved test
+% predictions. Confidence intervals (Wilson, 95%) and the McNemar test were computed from
+% those same files; no model was re-run on the test set.
 % =====================================================================================
 \documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
+\usepackage[final,expansion=false]{microtype}
 \usepackage{graphicx}
 \usepackage{booktabs}
-\usepackage{amsmath}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{threeparttable}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,fit,backgrounds}
 \usepackage{url}
 \usepackage{cite}
 \usepackage[hidelinks]{hyperref}
+\usepackage[capitalise,nameinlink]{cleveref}
+
+% ---- consistent notation -----------------------------------------------------------
+\newcommand{\pp}{\,pp}                       % percentage points
+\newcommand{\RQ}[1]{\textbf{RQ#1}}
+\newcommand{\best}[1]{\textbf{#1}}
+
+\crefname{table}{Table}{Tables}
+\crefname{figure}{Fig.}{Figs.}
+\crefname{section}{Section}{Sections}
 
 \begin{document}
 
-\title{How Far Can Classical Machine Learning Go on Fashion-MNIST?\\
-\large A Leak-Free Benchmark of Pixels vs.\ HOG Features with Error Analysis}
+\title{How Far Can Classical Machine Learning Go\\on Fashion-MNIST?\\[2pt]
+\large A Leak-Free Benchmark of Raw Pixels vs.\ HOG Features,\\with Cost and Error Analysis}
 
 \author{
-\IEEEauthorblockN{Tanmay Singh}
-\and
-\IEEEauthorblockN{Anand Mishra}
-\and
-\IEEEauthorblockN{Rajdeep Sanyal}
-\and
-\IEEEauthorblockN{Rajat Srivastav}
-\and
-\IEEEauthorblockN{Omved Nagre}
-\and
-\IEEEauthorblockA{TODO: Department, University\\TODO: Course name and code}
+\IEEEauthorblockN{Tanmay Singh, Anand Mishra, Rajdeep Sanyal, Rajat Srivastav, Omved Nagre}
+\IEEEauthorblockA{Newton School of Technology, Rishihood University\\
+Advanced Machine Learning --- Capstone Project, Phase~1}
 }
 
 \maketitle
 
 % =====================================================================================
 \begin{abstract}
-We measure how well classical machine learning classifies clothing images in Fashion-MNIST, and why it fails where it
-fails. Five classifiers (Logistic Regression, $k$-Nearest Neighbours, Random Forest, Linear SVM and RBF SVM) and a dummy
-baseline are trained on two feature sets: raw pixels and Histograms of Oriented Gradients (HOG). Every choice
-(hyperparameters, HOG settings and the final model) is made on a fixed, stratified 6,000-image validation split, and the
-10,000-image test set is used exactly once per experiment, recorded in an audit log. The best model by validation
-accuracy, an RBF SVM on HOG features, reaches \textbf{91.08\%} test accuracy. HOG improves the linear models by 4 to 5
-points but does not help Random Forest or $k$-NN. The RBF SVM is about 2,400 times slower to predict than a Random Forest
-that is only 3.5 points less accurate. Error analysis shows that mistakes among four upper-body garments (T-shirt/top,
-Pullover, Coat and Shirt) make up 56 to 66\% of every model's errors, with Shirt the hardest class for all ten trained
-models. These limits of fixed, handcrafted features motivate a convolutional network in the next phase of the project.
+We ask how well classical machine learning classifies the clothing images of Fashion-MNIST, what it costs, and why it fails
+where it fails. Five classifiers---Logistic Regression, $k$-Nearest Neighbors, Random Forest, Linear SVM and RBF
+SVM---plus a majority-class baseline are trained on two representations: raw pixels and Histograms of Oriented Gradients
+(HOG). Every decision (hyperparameters, HOG configuration, final model) is taken on a fixed, stratified 6{,}000-image
+validation split; the 10{,}000-image test set is touched exactly once per experiment and every access is recorded in an
+audit log. The model selected on validation, an RBF SVM on HOG features, reaches 91.08\% test accuracy
+(95\% CI 90.51--91.62\%), significantly better than the same SVM on pixels (McNemar $p<10^{-5}$). HOG lifts the linear
+models by 4--5 percentage points (pp) but does not help Random Forest or $k$-NN, and the most accurate model predicts roughly
+2{,}400$\times$ slower than a Random Forest that is only 3.5\pp{} less accurate. Confusions among four upper-body
+garments (T-shirt/top, Pullover, Coat, Shirt) account for 56--66\% of every model's errors, and Shirt is the hardest class
+for all ten trained models---exactly as the exploratory analysis predicted before training. These limits of fixed,
+handcrafted features motivate the convolutional network of Phase~2.
 \end{abstract}
 
 \begin{IEEEkeywords}
 Fashion-MNIST, image classification, HOG, support vector machines, random forest, benchmarking, data leakage,
-error analysis
+model selection, error analysis
 \end{IEEEkeywords}
 
 % =====================================================================================
 \section{Introduction}
-An online clothing catalogue that tags product photos automatically needs a classifier that is accurate, fast and small.
-Deep networks are the usual answer today, but they are not always necessary, and a fair comparison needs a strong,
-honest classical baseline first. This report builds that baseline on Fashion-MNIST~\cite{xiao2017fashion}, a dataset
-designed as a harder drop-in replacement for MNIST digits.
+\label{sec:intro}
+An online clothing catalog that tags product photos automatically needs a classifier that is accurate, fast and
+small. Deep networks are the default answer today, but whether they are \emph{necessary} can only be judged against a
+strong and honestly evaluated classical baseline. Many published baselines are neither: hyperparameters are tuned against
+the test set, or models are compared after being tuned on different amounts of data. This report builds such a baseline
+on Fashion-MNIST~\cite{xiao2017fashion}, a dataset designed as a harder, drop-in replacement for MNIST digits.
 
 We answer four research questions:
 \begin{itemize}
-  \item \textbf{RQ1:} How accurately can classical ML classify Fashion-MNIST from raw pixels?
-  \item \textbf{RQ2:} Do HOG features beat raw pixels, and for which models?
-  \item \textbf{RQ3:} Which model gives the best trade-off between accuracy, prediction speed and model size?
-  \item \textbf{RQ4:} Which classes are confused most, and why do handcrafted features fail there?
+  \item \RQ{1}: How accurately can classical ML classify Fashion-MNIST from raw pixels?
+  \item \RQ{2}: Do HOG features beat raw pixels, and for which models?
+  \item \RQ{3}: Which model offers the best trade-off between accuracy, end-to-end prediction time and model size?
+  \item \RQ{4}: Which classes are confused most, and why do handcrafted features fail there?
 \end{itemize}
 
-Our contributions are: (i) a reproducible benchmark of 12 experiments with a committed validation split and a test-set
-audit log; (ii) a validation-only selection protocol that also corrects an unfair comparison between models tuned on
-different amounts of data; (iii) a speed analysis that counts feature-extraction cost; and (iv) an error analysis that
-links model mistakes back to the exploratory data analysis.
+\textbf{Contributions.}
+(i)~A reproducible benchmark of 12 experiments with a committed validation split and a test-set audit log;
+(ii)~a validation-only selection protocol that also corrects an unfair comparison between models tuned on different
+amounts of data;
+(iii)~a cost analysis that counts feature-extraction time, not just model time; and
+(iv)~an error analysis, including a paired significance test and an agreement analysis between the two best models,
+that links model mistakes back to predictions made from the data before any model was trained.
+
 
 % =====================================================================================
 \section{Background}
-\textbf{Classifiers.} Logistic Regression is a linear model trained with cross-entropy and an L2 penalty whose strength
-is controlled by $C$ (smaller $C$ means stronger regularisation). $k$-NN~\cite{cover1967nearest} stores the training set
-and labels a new image by its $k$ closest neighbours. A Random Forest~\cite{breiman2001random} averages many decision
-trees, each trained on a bootstrap sample with a random subset of features per split. Support vector
-machines~\cite{cortes1995support} find a maximum-margin boundary; the linear version uses LIBLINEAR~\cite{fan2008liblinear}
-and the RBF version uses the kernel $K(x,x')=\exp(-\gamma\lVert x-x'\rVert^2)$ to draw non-linear boundaries.
+\label{sec:background}
+\textbf{Classifiers.} \emph{Logistic Regression} is a linear model trained with cross-entropy and an L2 penalty whose
+strength is set by $C$ (smaller $C$, stronger regularization). \emph{$k$-NN}~\cite{cover1967nearest} stores the training
+set and labels an image by its $k$ nearest neighbors. A \emph{Random Forest}~\cite{breiman2001random} averages many
+decision trees, each grown on a bootstrap sample with a random feature subset at every split. \emph{Support vector
+machines}~\cite{cortes1995support} find a maximum-margin boundary; the linear variant uses LIBLINEAR~\cite{fan2008liblinear}
+and the kernel variant uses the RBF kernel
+\begin{equation}
+  K(\mathbf{x},\mathbf{x}') = \exp\!\left(-\gamma\,\lVert\mathbf{x}-\mathbf{x}'\rVert^2\right)
+  \label{eq:rbf}
+\end{equation}
+to draw non-linear boundaries. Its prediction cost grows with the number of support vectors, since every test point is
+compared with each of them.
 
-\textbf{HOG.} Histograms of Oriented Gradients~\cite{dalal2005histograms} describe an image by the directions of its edges.
-The image is divided into small cells; each cell gets a histogram of gradient directions weighted by gradient strength,
-and neighbouring cells are normalised together in blocks, which makes the descriptor robust to brightness changes. For a
-$28\times28$ image with cell size $c$, block size $b$ and $o$ orientation bins, the length is
-$\left(\frac{28}{c}-b+1\right)^2 b^2 o$.
+\textbf{HOG.} Histograms of Oriented Gradients~\cite{dalal2005histograms} describe an image by the directions of its
+edges. The image is divided into cells of $c\times c$ pixels; each cell receives a histogram of $o$ gradient-orientation
+bins weighted by gradient magnitude, and overlapping blocks of $b\times b$ cells are normalized together, which makes the
+descriptor robust to brightness and contrast. For a $28\times28$ image the descriptor length is
+\begin{equation}
+  d = \left(\tfrac{28}{c}-b+1\right)^{2} b^{2}\, o .
+  \label{eq:hogdim}
+\end{equation}
 
-\textbf{Leakage and selection bias.} Using test data for any decision makes the test score optimistic~\cite{kaufman2012leakage}.
-Even with a clean test set, choosing the best of many settings on validation makes the winning validation score slightly
-optimistic~\cite{cawley2010overfitting}, which is why we report the untouched test score.
+\textbf{Leakage and selection bias.} Using test data for any decision makes the reported test score
+optimistic~\cite{kaufman2012leakage}. Even with a clean test set, picking the best of many configurations on validation
+makes the \emph{winning validation score} optimistic~\cite{cawley2010overfitting}; we therefore report the untouched test
+score as the headline number.
 
-All models use scikit-learn~\cite{pedregosa2011scikit}; HOG uses scikit-image~\cite{vanderwalt2014scikit}.
+\textbf{Software.} All models use scikit-learn~\cite{pedregosa2011scikit}; HOG uses scikit-image~\cite{vanderwalt2014scikit}.
 
 % =====================================================================================
 \section{Data and Experimental Protocol}
-\subsection{Dataset}
-Fashion-MNIST has 70,000 grayscale $28\times28$ images in 10 balanced classes: T-shirt/top, Trouser, Pullover, Dress,
-Coat, Sandal, Shirt, Sneaker, Bag and Ankle boot (60,000 training and 10,000 test images). The four official files are
-downloaded over HTTPS and verified against the published MD5 checksums. Sanity checks confirm the shapes, the label range
-0 to 9, no missing values, exactly 6,000 training and 1,000 test images per class, and no exact duplicate images inside or
-across the training and test sets.
+\label{sec:protocol}
 
-\subsection{Fixed split}
-We carve a stratified validation set of 6,000 images (600 per class, seed 42) from the official training set, leaving
-54,000 training images. The validation indices are committed to the repository (MD5
-\texttt{54ff6b78b27109cdfc3ebe7204040a07}), so every team member uses the identical split. The official test set
-(10,000 images) is the final, untouched evaluation set.
+\subsection{Dataset and Integrity Checks}
+Fashion-MNIST contains 70{,}000 grayscale $28\times28$ images in 10 balanced classes---T-shirt/top, Trouser, Pullover,
+Dress, Coat, Sandal, Shirt, Sneaker, Bag and Ankle boot---split into 60{,}000 training and 10{,}000 test images. The four
+official files are downloaded over HTTPS and verified against the published MD5 checksums. Automated checks confirm the
+array shapes, labels in $\{0,\dots,9\}$, no missing values, exactly 6{,}000 training and 1{,}000 test images per class,
+and no exact duplicate images within or across the training and test sets.
 
-\subsection{Leakage controls}
+\subsection{Fixed Split}
+A stratified validation set of 6{,}000 images (600 per class, seed 42) is carved from the official training set, leaving
+54{,}000 training images. The validation indices are committed to the repository (MD5
+\texttt{54ff6b78\allowbreak b27109cd\allowbreak fc3ebe72\allowbreak 04040a07}), so every team member uses an identical
+split. The official test set is the final, untouched evaluation set (\cref{fig:protocol}).
+
+\begin{figure}[t]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[
+  font=\sffamily\footnotesize,
+  box/.style={draw, rounded corners=2pt, align=center, minimum height=8mm, inner sep=3pt},
+  data/.style={box, fill=blue!7},
+  proc/.style={box, fill=gray!8},
+  lock/.style={box, fill=red!8, draw=red!60!black},
+  arr/.style={-{Stealth[length=2mm]}, thick}
+]
+  \node[data] (tr)  {Train\\54{,}000};
+  \node[data, below=4mm of tr] (va) {Validation\\6{,}000};
+  \node[lock, below=4mm of va] (te) {Test\\10{,}000};
+
+  \node[proc, right=9mm of tr] (grid) {Grid search\\fit on 54k};
+  \node[proc, right=9mm of va] (sel)  {Select by\\val.\ accuracy};
+  \node[proc, right=9mm of sel] (refit) {Refit on\\60k};
+  \node[lock, right=9mm of te, xshift=17mm] (once) {\texttt{final\_test\_run()}\\once per experiment};
+  \node[box, right=6mm of once, fill=green!8] (log) {Audit log\\12 rows};
+
+  \draw[arr] (tr) -- (grid);
+  \draw[arr] (grid) -- (sel);
+  \draw[arr] (va) -- (sel);
+  \draw[arr] (sel) -- (refit);
+  \draw[arr] (refit) -- (once);
+  \draw[arr] (te) -- (once);
+  \draw[arr] (once) -- (log);
+\end{tikzpicture}}
+\caption{Evaluation protocol. Every decision is taken on validation; the test set (red) is read by a single function,
+once per experiment, and each read is logged.}
+\label{fig:protocol}
+\end{figure}
+
+\subsection{Leakage Controls}
 \begin{enumerate}
   \item The test set is read by exactly one function, \texttt{final\_test\_run()}, once per experiment. Each call appends a
         row to \texttt{test\_log.csv}; the final log has exactly 12 rows, one per experiment.
-  \item Hyperparameters, HOG settings and the best model are chosen on validation accuracy only.
-  \item Feature scaling (\texttt{StandardScaler}) lives inside each scikit-learn \texttt{Pipeline}, so it learns only from
-        the rows a model is trained on, including inside cross-validation folds.
-  \item Exploratory analysis uses the 54,000-image training split only.
-  \item Error analysis reads the predictions saved at test time; no model predicts on the test set again.
+  \item Hyperparameters, HOG settings and the final model are chosen on validation accuracy only.
+  \item Feature scaling (\texttt{StandardScaler}) lives inside each scikit-learn \texttt{Pipeline}, so it is fitted only on
+        the rows a model is trained on, including within cross-validation folds.
+  \item Exploratory analysis uses the 54{,}000-image training split only.
+  \item Error analysis and significance tests read the predictions saved at test time; no model predicts on the test
+        set again.
 \end{enumerate}
 
-\subsection{Procedure for each experiment}
-For each model and feature set we (1) fit every grid combination on the 54k training split and score it on validation;
-(2) take the combination with the highest validation accuracy; (3) refit it on all 60,000 training and validation
-images; and (4) evaluate it once on test, recording accuracy, macro F1, per-class precision and recall, the confusion
-matrix, training time, prediction time per 1,000 images (best of three runs), and model size (bytes of the pickled model).
+\subsection{Procedure per Experiment}
+For each model--feature pair we (1)~fit every grid combination on the 54k training split and score it on validation;
+(2)~take the combination with the highest validation accuracy; (3)~refit it on all 60{,}000 training and validation images;
+and (4)~evaluate it once on test, recording accuracy, macro-F1, per-class precision and recall, the confusion matrix,
+training time, model-only prediction time per 1{,}000 images (best of three runs), and model size (bytes of the pickled
+model). Test accuracies are reported with Wilson 95\% confidence intervals; with $n=10{,}000$ these are about
+$\pm0.6$\pp{} wide for every trained model.
 
 % =====================================================================================
 \section{Exploratory Data Analysis}
-Pixel values are mostly background: PCA needs 84 of 784 components to keep 90\% of the variance and 188 to keep 95\%,
-so raw pixels are highly redundant. Fig.~\ref{fig:eda} shows the class-mean images and a t-SNE~\cite{vandermaaten2008tsne}
-map of the training split. The mean images of the upper-body garments are almost identical: the cosine similarity is 0.987
-for Coat and Shirt, 0.984 for Pullover and Coat, 0.983 for Pullover and Shirt, and 0.950 for T-shirt/top and Shirt. In the t-SNE map,
-Pullover, Coat and Shirt form one mixed cloud, while Trouser and Bag form clean, isolated clusters. Before training any
-model, the EDA therefore predicted that Shirt would have the lowest recall.
+\label{sec:eda}
+Pixel values are dominated by background: PCA needs 84 of 784 components to retain 90\% of the variance and 188 to retain
+95\%, so raw pixels are highly redundant. \Cref{fig:eda} shows the class-mean images and a t-SNE~\cite{vandermaaten2008tsne}
+embedding of the training split. The mean images of the upper-body garments are nearly identical: cosine similarity is
+0.987 for Coat--Shirt, 0.984 for Pullover--Coat, 0.983 for Pullover--Shirt and 0.950 for T-shirt/top--Shirt. In the t-SNE
+map, Pullover, Coat and Shirt form one mixed cloud, while Trouser and Bag form clean, isolated clusters.
+
+\textbf{Predictions made before training.} Before any model was trained, the EDA led us to predict that (a)~Shirt would have the
+lowest recall and (b)~most errors would fall within the upper-body group. \Cref{sec:errors} tests both.
 
 \begin{figure}[t]
   \centering
-  \includegraphics[width=\linewidth]{eda_class_mean_images.png}\\[2pt]
+  \includegraphics[width=\linewidth]{eda_class_mean_images.png}\\[3pt]
   \includegraphics[width=0.85\linewidth]{eda_tsne.png}
-  \caption{Top: mean image of each class (training split). Bottom: t-SNE map of a training subsample. Pullover, Coat and
-  Shirt overlap; Trouser and Bag are well separated.}
+  \caption{Top: mean image of each class (training split). Bottom: t-SNE embedding of a training subsample. Pullover, Coat
+  and Shirt overlap; Trouser and Bag are well separated.}
   \label{fig:eda}
 \end{figure}
 
 % =====================================================================================
-\section{Features}
-\textbf{Pixels.} Each image is flattened to a 784-dimensional vector with values in $[0,1]$. Flattening discards the 2-D
-neighbourhood: a garment shifted by two pixels becomes a very different vector.
+\section{Feature Representations}
+\label{sec:features}
+\textbf{Pixels.} Each image is flattened to a 784-dimensional vector in $[0,1]$. Flattening discards the 2-D
+neighborhood: a garment shifted by two pixels becomes a very different vector.
 
-\textbf{HOG settings sweep.} We tried $3\times2\times2=12$ HOG configurations: orientations $\{6,9,12\}$, cell size
-$\{4\times4, 7\times7\}$ pixels and block size $\{1\times1, 2\times2\}$ cells. Each was scored by a fast proxy (a linear SVM
-trained with SGD and hinge loss) fitted on training features and scored on validation (Table~\ref{tab:hog}). Small cells
-win by 4 to 8 points, block normalisation adds 2 to 3 points and more orientation bins help slightly. The rule fixed in advance
-was ``highest validation accuracy; within 0.3 points prefer the smaller vector''. The winner (12 orientations, $4\times4$
-cells, $2\times2$ blocks, 1,728 dimensions, 0.8818) beats the 1,296-dimensional runner-up (0.8783) by 0.35 points, so it
-was chosen. Extraction costs about 0.22\,s per 1,000 images.
+\textbf{HOG configuration sweep.} We evaluated $3\times2\times2=12$ HOG configurations: orientations $o\in\{6,9,12\}$, cell
+size $c\in\{4,7\}$ pixels and block size $b\in\{1,2\}$ cells. Each was scored with a fast proxy---a linear SVM trained by
+SGD with hinge loss---fitted on training features and scored on validation (\cref{tab:hog}). Small cells win by 4--8\pp,
+block normalization adds 2--3\pp, and more orientation bins help slightly. The selection rule, fixed in advance, was
+\emph{highest validation accuracy; within 0.3\pp{} prefer the shorter vector}. The winner ($o=12$, $c=4$, $b=2$,
+$d=1{,}728$ by \eqref{eq:hogdim}; 0.8818) beats the 1{,}296-dimensional runner-up (0.8783) by 0.35\pp, so it was kept.
+Extraction costs about 0.22\,s per 1{,}000 images.
 
 \begin{table}[t]
   \centering
-  \caption{HOG sweep: proxy validation accuracy (selected setting in bold; 7 of 12 configurations shown)}
+  \caption{HOG Sweep: Proxy Validation Accuracy\\(7 of 12 Configurations Shown; Selected Setting in Bold)}
   \label{tab:hog}
-  \begin{tabular}{ccc r r}
+  \begin{tabular}{ccc r c}
     \toprule
-    Orient. & Cell & Block & Dim. & Val acc \\
+    Orient.\ $o$ & Cell $c$ & Block $b$ & Dim.\ $d$ & Val.\ acc. \\
     \midrule
     6  & 4 & 2 & 864  & 0.8757 \\
-    9  & 4 & 2 & 1296 & 0.8783 \\
-    \textbf{12} & \textbf{4} & \textbf{2} & \textbf{1728} & \textbf{0.8818} \\
+    9  & 4 & 2 & 1{,}296 & 0.8783 \\
+    \best{12} & \best{4} & \best{2} & \best{1{,}728} & \best{0.8818} \\
     12 & 4 & 1 & 588  & 0.8630 \\
     12 & 7 & 2 & 432  & 0.8357 \\
     12 & 7 & 1 & 192  & 0.8010 \\
@@ -187,239 +262,317 @@ was chosen. Extraction costs about 0.22\,s per 1,000 images.
 \begin{figure}[t]
   \centering
   \includegraphics[width=\linewidth]{features_hog_examples.png}
-  \caption{One training image per class next to its HOG descriptor. The four tops produce similar torso-and-sleeve edge
-  patterns; shoes and trousers have distinctive edge layouts.}
+  \caption{One training image per class beside its HOG descriptor. The four tops yield similar torso-and-sleeve edge
+  patterns; footwear and trousers have distinctive edge layouts.}
   \label{fig:hog}
 \end{figure}
 
-\textbf{Scaling.} Logistic Regression, SVMs and $k$-NN are sensitive to feature scale, so they standardise features
-inside their pipeline. Random Forest splits one feature at a time on a threshold, which rescaling does not change, so it
-uses no scaler.
+\textbf{Scaling.} Logistic Regression, the SVMs and $k$-NN are sensitive to feature scale, so they standardize inside
+their pipeline. A Random Forest splits on one feature at a time by threshold, which is invariant to monotone rescaling,
+so it uses no scaler.
 
 % =====================================================================================
 \section{Models and Tuning}
-Table~\ref{tab:grids} lists the validation grids and the selected settings. Two practical constraints shaped tuning on an
-8\,GB laptop. First, the RBF SVM's training time grows faster than linearly with data, so its 9-combination grid was
-searched on a stratified 10,000-image subset (1,000 per class), and only the selected setting was refit on all 60,000
-images. Second, Linear SVM fits on 54,000 images took 105 to 924\,s, growing sharply with $C$.
+\label{sec:models}
+\Cref{tab:grids} lists the validation grids and the selected settings. Two practical constraints shaped tuning on an
+8\,GB laptop. First, kernel-SVM training scales super-linearly with the number of samples, so the RBF SVM's 9-point grid
+was searched on a stratified 10{,}000-image subset (1{,}000 per class), and only the selected setting was refit on the
+full data. Second, Linear SVM fits on 54{,}000 images took 105--924\,s, growing sharply with $C$.
 
 \begin{table}[t]
   \centering
-  \caption{Validation grids and selected settings}
+  \caption{Validation Grids and Selected Settings}
   \label{tab:grids}
   \setlength{\tabcolsep}{3pt}
-  \begin{tabular}{p{1.45cm} p{3.05cm} p{2.9cm}}
+  \renewcommand{\arraystretch}{1.12}
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.3cm} >{\raggedright\arraybackslash}p{3.15cm} >{\raggedright\arraybackslash}p{3.0cm}@{}}
     \toprule
     Model & Grid & Selected (pixels / HOG) \\
     \midrule
     Log.\ Reg. & $C\in\{0.01,0.1,1,10\}$ & $C=0.01$ / $C=0.01$ \\
-    $k$-NN & $k\in\{1,3,5,7,9\}$, uniform/distance, Euclid./Manhattan & $k=3$, distance, Manhattan / $k=3$, distance, Euclidean \\
-    Rand.\ Forest & trees $\{100,300\}$, depth $\{\text{None},20,40\}$, features $\{\sqrt{p},\log_2 p\}$ & 300, depth 20, $\sqrt{p}$ / 300, full depth, $\sqrt{p}$ \\
+    $k$-NN & $k\in\{1,3,5,7,9\}$; uniform / distance; Euclidean / Manhattan
+           & $k{=}3$, distance, Manhattan / $k{=}3$, distance, Euclidean \\
+    Rand.\ Forest & trees $\{100,300\}$; depth $\{\text{None},20,40\}$; features $\{\sqrt{p},\log_2 p\}$
+           & 300, depth 20, $\sqrt{p}$ / 300, full depth, $\sqrt{p}$ \\
     Linear SVM & $C\in\{0.01,0.1,1\}$ & $C=0.01$ / $C=0.01$ \\
-    RBF SVM & $C\in\{0.1,1,10\}$, $\gamma\in\{\text{scale},0.01,0.001\}$ (10k subset) & $C=10,\gamma=0.001$ / $C=10,\gamma=\text{scale}$ \\
+    RBF SVM & $C\in\{0.1,1,10\}$; $\gamma\in\{\text{scale},0.01,0.001\}$ (10k subset)
+           & $C{=}10,\gamma{=}0.001$ / $C{=}10,\gamma{=}\text{scale}$ \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\textbf{A fair validation comparison.} Because the RBF SVM was tuned on 10,000 images, its tuning validation scores
-(0.8793 pixels, 0.8867 HOG) came from less training data than every other model's (54,000) and understated it. Before
-choosing the best model, we wrote down the fix: refit the \emph{already selected} RBF settings on the full 54,000-image
-training split and score them on the same validation set, with no new search and no test data. This gave 0.9082 (pixels)
-and 0.9157 (HOG). With all scores on an equal footing, the validation ranking is RBF SVM HOG (0.9157) $>$ RBF SVM pixels
-(0.9082) $>$ Logistic Regression HOG (0.8927) $>$ Linear SVM HOG (0.8900).
+\textbf{Making the validation comparison fair.} Because the RBF SVM was tuned on 10{,}000 images, its tuning-time
+validation scores (0.8793 pixels, 0.8867 HOG) came from far less training data than every other model's (54{,}000) and
+understated it. \emph{Before} choosing the final model, we fixed a correction: refit the \emph{already selected} RBF
+settings on the full 54k training split and score them on the same validation set---no new search and no test data.
+This gave 0.9082 (pixels) and 0.9157 (HOG). On equal footing, the validation ranking is RBF SVM\,/\,HOG (0.9157)
+$>$ RBF SVM\,/\,pixels (0.9082) $>$ Logistic Regression\,/\,HOG (0.8927) $>$ Linear SVM\,/\,HOG (0.8900).
 
-\textbf{Observations.} The best $C$ sits at the edge of the grid for Logistic Regression and Linear SVM (0.01, the
-smallest) and for the RBF SVM (10, the largest). We did not widen the grids afterwards, to avoid another round of test
-evaluation; this is a limitation. For the RBF SVM, $\gamma=0.01$ is far too narrow for standardised 784- or
-1,728-dimensional inputs: HOG validation accuracy collapses to 11 to 29\%.
+\textbf{Observations.} The best $C$ lies on the grid boundary for Logistic Regression and Linear SVM (0.01, the smallest)
+and for the RBF SVM (10, the largest); we did not widen the grids afterwards (\cref{sec:discussion}). The RBF bandwidth
+behaves as theory predicts. After standardization, scikit-learn's \texttt{scale} setting equals $1/d$: about 0.0013 for
+pixels and 0.00058 for HOG. The selected values sit at this scale, whereas $\gamma=0.01$ is 17$\times$ too narrow for
+HOG; the kernel in \eqref{eq:rbf} then treats almost every pair of images as dissimilar, and HOG validation accuracy
+collapses to 11--29\%.
 
 % =====================================================================================
 \section{Results}
-Table~\ref{tab:results} lists all 12 experiments. Pixel results are in line with the baselines reported with the
-dataset~\cite{xiao2017fashion}.
+\label{sec:results}
+\Cref{tab:results} reports all 12 experiments. Pixel-feature results are in line with the scikit-learn baselines
+published with the dataset~\cite{xiao2017fashion}.
 
 \begin{table*}[t]
   \centering
-  \caption{All experiments. Val acc: model trained on 54k (RBF SVM refit on 54k for comparability). Test metrics: final
-  model trained on 60k, evaluated once. Inference is model-only time per 1,000 test images; HOG extraction adds about 216\,ms.}
+  \begin{threeparttable}
+  \caption{Results of All 12 Experiments}
   \label{tab:results}
-  \begin{tabular}{l l c c c r r r}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{@{}l l c c c c r r r@{}}
     \toprule
-    Model & Features & Val acc & Test acc & Macro F1 & Train (s) & Inference (ms/1k) & Size \\
+    Model & Features & Val.\ acc. & Test acc. & 95\% CI (\%) & Macro-F1 & Train (s) & Inference (ms/1k) & Size \\
     \midrule
-    Dummy (most frequent) & Pixels & 0.1000 & 0.1000 & 0.0182 & 0.00 & 0.00$^{a}$ & 709\,B \\
-    Dummy (most frequent) & HOG    & 0.1000 & 0.1000 & 0.0182 & 0.16 & 0.01$^{a}$ & 709\,B \\
-    Logistic Regression & Pixels & 0.8642 & 0.8472 & 0.8464 & n/a$^{b}$ & n/a$^{b}$ & 51.4\,KB \\
-    Logistic Regression & HOG    & 0.8927 & 0.8886 & 0.8885 & n/a$^{b}$ & n/a$^{b}$ & 111.8\,KB \\
-    $k$-NN & Pixels & 0.8747 & 0.8611 & 0.8614 & 0.49 & 6,926.61 & 188.7\,MB \\
-    $k$-NN & HOG    & 0.8728 & 0.8631 & 0.8623 & 1.29 & 731.13 & 415.2\,MB \\
-    Random Forest & Pixels & 0.8867 & 0.8756 & 0.8741 & 32.83 & 12.16 & 366.5\,MB \\
-    Random Forest & HOG    & 0.8735 & 0.8703 & 0.8692 & 68.53 & 19.02 & 500.7\,MB \\
-    Linear SVM & Pixels & 0.8583 & 0.8378 & 0.8353 & 99.24 & 1.22 & 82.7\,KB \\
-    Linear SVM & HOG    & 0.8900 & 0.8898 & 0.8892 & 162.04 & 2.62 & 180.8\,KB \\
-    RBF SVM & Pixels & 0.9082 & 0.8970 & 0.8967 & 195.67 & 4,766.94 & 125.1\,MB \\
-    \textbf{RBF SVM} & \textbf{HOG} & \textbf{0.9157} & \textbf{0.9108} & \textbf{0.9108} & 451.43 & 28,876.96$^{c}$ & 366.2\,MB \\
+    \multirow{2}{*}{Dummy (majority)} & Pixels & 0.1000 & 0.1000 & 9.4--10.6 & 0.0182 & 0.00 & 0.00\tnote{a} & 709\,B \\
+                                      & HOG    & 0.1000 & 0.1000 & 9.4--10.6 & 0.0182 & 0.16 & 0.01\tnote{a} & 709\,B \\
+    \midrule
+    \multirow{2}{*}{Logistic Regression} & Pixels & 0.8642 & 0.8472 & 84.0--85.4 & 0.8464 & n/a\tnote{b} & n/a\tnote{b} & 51.4\,KB \\
+                                         & HOG    & 0.8927 & 0.8886 & 88.2--89.5 & 0.8885 & n/a\tnote{b} & n/a\tnote{b} & 111.8\,KB \\
+    \midrule
+    \multirow{2}{*}{$k$-NN} & Pixels & 0.8747 & 0.8611 & 85.4--86.8 & 0.8614 & 0.49 & 6{,}926.61 & 188.7\,MB \\
+                            & HOG    & 0.8728 & 0.8631 & 85.6--87.0 & 0.8623 & 1.29 & 731.13 & 415.2\,MB \\
+    \midrule
+    \multirow{2}{*}{Random Forest} & Pixels & 0.8867 & 0.8756 & 86.9--88.2 & 0.8741 & 32.83 & 12.16 & 366.5\,MB \\
+                                   & HOG    & 0.8735 & 0.8703 & 86.4--87.7 & 0.8692 & 68.53 & 19.02 & 500.7\,MB \\
+    \midrule
+    \multirow{2}{*}{Linear SVM} & Pixels & 0.8583 & 0.8378 & 83.0--84.5 & 0.8353 & 99.24 & 1.22 & 82.7\,KB \\
+                                & HOG    & 0.8900 & 0.8898 & 88.4--89.6 & 0.8892 & 162.04 & 2.62 & 180.8\,KB \\
+    \midrule
+    \multirow{2}{*}{RBF SVM} & Pixels & 0.9082 & 0.8970 & 89.1--90.3 & 0.8967 & 195.67 & 4{,}766.94 & 125.1\,MB \\
+    & \best{HOG} & \best{0.9157} & \best{0.9108} & \best{90.5--91.6} & \best{0.9108} & 451.43 & 28{,}876.96\tnote{c} & 366.2\,MB \\
     \bottomrule
-    \multicolumn{8}{l}{\footnotesize $^{a}$Measured on a different machine; excluded from speed comparisons.
-    $^{b}$Not comparable (runs overlapped other work); accuracy unaffected.}\\
-    \multicolumn{8}{l}{\footnotesize $^{c}$26,343 support vectors; looks about $2\times$ slower than expected, so treated as an upper bound.
-    $k$-NN timed on an Apple M3; Random Forest and SVMs on an Apple M3 Pro.}
   \end{tabular}
+  \begin{tablenotes}\footnotesize
+    \item Val.\ acc.: model trained on 54k (RBF SVM refit on 54k for comparability). Test: final model trained on 60k,
+          evaluated once; CI is the Wilson 95\% interval. Inference: model-only time per 1{,}000 test images; HOG
+          extraction adds $\approx$216\,ms. Best result in bold.
+    \item[a] Measured on a different machine; excluded from speed comparisons.
+    \item[b] Not comparable (runs overlapped other workloads); accuracy unaffected.
+    \item[c] 26{,}343 support vectors. About $2\times$ slower than expected from the pixel model, so treated as an upper bound.
+    \item Timing hardware: $k$-NN on an Apple M3; Random Forest and SVMs on an Apple M3 Pro.
+  \end{tablenotes}
+  \end{threeparttable}
 \end{table*}
 
-\subsection{RQ1: Raw pixels}
-The best pixel model is the RBF SVM at 89.70\%. Random Forest reaches 87.56\%, $k$-NN 86.11\%, and the linear models
-only 83.78 to 84.72\%. A single pixel only records the brightness of one location, so a linear boundary in pixel space cannot
-capture shape.
+\subsection{RQ1: Raw Pixels}
+The best pixel model is the RBF SVM at 89.70\%, followed by Random Forest (87.56\%) and $k$-NN (86.11\%); the linear
+models reach only 83.78--84.72\%. A single pixel records brightness at one location, so a linear boundary in pixel space
+cannot express shape, and models that build non-linear combinations of pixels do markedly better.
 
-\subsection{RQ2: HOG vs.\ pixels}
-HOG helps the linear models most: +5.20 points for Linear SVM (83.78\%\,$\rightarrow$\,88.98\%) and +4.14 for Logistic
-Regression (84.72\%\,$\rightarrow$\,88.86\%). It lifts the RBF SVM by +1.38 to 91.08\%. It does not help Random Forest
-($-0.53$) or $k$-NN ($+0.20$) (Fig.~\ref{fig:rq23}, left). A plausible explanation for the forest is that each split looks
-at one feature, and one raw pixel is more informative on its own than one HOG bin, which describes one edge direction in
-one small block. We did not test this explanation directly.
+\subsection{RQ2: HOG vs.\ Pixels}
+HOG helps the linear models most: $+5.20$\pp{} for Linear SVM (83.78\,$\rightarrow$\,88.98\%) and $+4.14$\pp{} for
+Logistic Regression (84.72\,$\rightarrow$\,88.86\%), turning both into competitive models. It lifts the RBF SVM by
+$+1.38$\pp{} to 91.08\%. It does not help Random Forest ($-0.53$\pp) or $k$-NN ($+0.20$\pp, well inside the CI)
+(\cref{fig:rq23}, left). A plausible explanation for the forest is that each split inspects a single feature, and one raw
+pixel is more informative on its own than one HOG bin, which describes a single edge direction in one small block; we did
+not test this hypothesis directly.
 
 \begin{figure*}[t]
   \centering
   \includegraphics[width=0.48\linewidth]{results_pixels_vs_hog.png}\hfill
   \includegraphics[width=0.48\linewidth]{results_acc_vs_time.png}
-  \caption{Left: test accuracy with pixels vs.\ HOG features (RQ2). Right: test accuracy vs.\ model-only prediction time
-  per 1,000 images, log scale (RQ3). Logistic Regression and the dummy baseline are excluded from the speed plot.}
+  \caption{Left: test accuracy with pixel vs.\ HOG features (RQ2). Right: test accuracy vs.\ model-only prediction time
+  per 1{,}000 images on a log scale (RQ3). Logistic Regression and the dummy baseline are excluded from the speed plot.}
   \label{fig:rq23}
 \end{figure*}
 
-\subsection{RQ3: Accuracy, speed and size}
-A fair speed comparison must include feature extraction. Counting about 216\,ms per 1,000 images for HOG, the
-end-to-end picture is:
-\begin{itemize}
-  \item \textbf{Fastest above 87\%:} Random Forest on pixels, 87.56\% in about 12\,ms per 1,000 images, but the model is
-        366\,MB.
-  \item \textbf{Best accuracy for its size:} Linear SVM on HOG, 88.98\% with a 181\,KB model; its 219\,ms per 1,000
-        images is almost entirely HOG extraction.
-  \item \textbf{Most accurate:} RBF SVM on HOG, 91.08\%, but about 29\,s per 1,000 images, about 2,400 times slower than the
-        Random Forest for +3.5 points. Each prediction is compared with all 26,343 support vectors.
-\end{itemize}
-$k$-NN is both slower and less accurate than the Random Forest, so it is never the best choice here.
+\subsection{RQ3: Accuracy, Speed and Size}
+A fair speed comparison must include feature extraction (\cref{tab:tradeoff}). Three options stand out:
 
-\subsection{Selected model and stability}
-The best model by validation accuracy is the RBF SVM on HOG (validation 0.9157). The test score played no part in this
-choice. Validation accuracy on 6,000 images has a standard error of about $\pm0.4$ points, so its 0.75-point lead over the
-pixel RBF SVM is real but modest. A stratified 5-fold cross-validation on a 10,000-image subset of the training and
-validation data gives $0.8775\pm0.0054$ (folds 0.8765, 0.8860, 0.8715, 0.8725, 0.8810). The low spread shows the model is
-stable across data partitions; the lower mean is expected because each fold trains on only 8,000 images.
+\begin{table}[t]
+  \centering
+  \caption{End-to-End Deployment Trade-Off\\(Time Includes HOG Extraction Where Used)}
+  \label{tab:tradeoff}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{@{}l c r r@{}}
+    \toprule
+    Model / features & Test acc. & ms per 1k & Size \\
+    \midrule
+    Random Forest / pixels & 87.56\% & $\approx$12 & 366.5\,MB \\
+    Linear SVM / HOG       & 88.98\% & $\approx$219 & 180.8\,KB \\
+    RBF SVM / pixels       & 89.70\% & $\approx$4{,}767 & 125.1\,MB \\
+    RBF SVM / HOG          & 91.08\% & $\le$29{,}093 & 366.2\,MB \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{itemize}
+  \item \textbf{Lowest latency above 87\%:} Random Forest on pixels---87.56\% in about 12\,ms per 1{,}000 images, but a
+        366\,MB model.
+  \item \textbf{Best accuracy per byte:} Linear SVM on HOG---88.98\% from a 181\,KB model, about 2{,}000$\times$ smaller
+        than the forest; its 219\,ms per 1{,}000 images is almost entirely HOG extraction.
+  \item \textbf{Highest accuracy:} RBF SVM on HOG---91.08\%, but up to 29\,s per 1{,}000 images, roughly 2{,}400$\times$
+        slower than the forest for $+3.5$\pp, because each prediction is compared with all 26{,}343 support vectors.
+\end{itemize}
+$k$-NN is both slower and less accurate than the Random Forest, so it is dominated and never the right choice here. For
+the catalog use case, the Linear SVM on HOG is the most practical classical model; the RBF SVM sets the accuracy bar
+for Phase~2.
+
+\subsection{Selected Model, Significance and Stability}
+The model selected on validation is the RBF SVM on HOG (0.9157); the test score played no part in this choice. Its
+validation lead over the pixel RBF SVM (0.75\pp) is only about twice the standard error of a 6{,}000-image validation
+estimate ($\approx$0.36\pp), so on validation alone it is suggestive rather than conclusive. The held-out test set
+confirms it: on the paired test predictions, the HOG model is wrong on 377 images the pixel model gets right, and right
+on 515 the pixel model gets wrong. A two-sided McNemar test~\cite{mcnemar1947note} with continuity correction gives $\chi^2=21.0$,
+$p=4.5\times10^{-6}$ (exact binomial $p=4.3\times10^{-6}$), so the 1.38\pp{} gain is statistically significant.
+
+A stratified 5-fold cross-validation on a 10{,}000-image subset of the training and validation data gives
+$0.8775\pm0.0054$ (folds 0.8765, 0.8860, 0.8715, 0.8725, 0.8810). The small spread indicates the selected configuration is
+stable across partitions; the lower mean is expected because each fold trains on only 8{,}000 images.
 
 % =====================================================================================
 \section{Error Analysis (RQ4)}
-\textbf{Per-class recall.} Shirt is the hardest class for all ten trained models, with recall from 50.9\% (Linear SVM,
-pixels) to 75.2\% (RBF SVM, HOG). Pullover (73.5 to 84.9\%) and Coat (76.4 to 86.3\%) follow. Trouser, Bag, Sandal, Sneaker
-and Ankle boot are easy for every model (Fig.~\ref{fig:errors}, left).
+\label{sec:errors}
+\textbf{Per-class recall.} Shirt is the hardest class for \emph{all ten} trained models, with recall from 50.9\% (Linear
+SVM, pixels) to 75.2\% (RBF SVM, HOG), followed by Pullover (73.5--84.9\%) and Coat (76.4--86.3\%). Trouser, Bag, Sandal,
+Sneaker and Ankle boot are easy for every model (\cref{fig:errors}, left). This confirms prediction~(a) from \cref{sec:eda}.
 
-\textbf{Top confusions of the best model.} From the saved confusion matrix (1,000 test images per class): Shirt\,$\rightarrow$\,T-shirt/top
-(104), T-shirt/top\,$\rightarrow$\,Shirt (91), Pullover\,$\rightarrow$\,Shirt (66), Pullover\,$\rightarrow$\,Coat (61) and
-Shirt\,$\rightarrow$\,Coat (59) (Fig.~\ref{fig:errors}, right). Mistakes among T-shirt/top, Pullover, Coat and Shirt
-account for 56 to 66\% of every trained model's errors. This is exactly the group the EDA flagged before any model was
-trained.
+\textbf{Dominant confusions.} From the selected model's confusion matrix (1{,}000 test images per class), the five largest
+off-diagonal entries are Shirt\,$\rightarrow$\,T-shirt/top (104), T-shirt/top\,$\rightarrow$\,Shirt (91),
+Pullover\,$\rightarrow$\,Shirt (66), Pullover\,$\rightarrow$\,Coat (61) and Shirt\,$\rightarrow$\,Coat (59)
+(\cref{fig:errors}, right). Across all ten trained models, confusions within \{T-shirt/top, Pullover, Coat, Shirt\} make up
+56--66\% of all errors, confirming prediction~(b).
 
 \begin{figure*}[t]
   \centering
   \includegraphics[width=0.52\linewidth]{results_recall_heatmap.png}\hfill
   \includegraphics[width=0.44\linewidth]{errors_confusion_rbf_svm_hog.png}
-  \caption{Left: per-class recall of all 12 experiments. Right: row-normalised confusion matrix of the selected model
-  (RBF SVM, HOG). The upper-body garments form the main block of errors.}
+  \caption{Left: per-class recall of all 12 experiments. Right: row-normalized confusion matrix of the selected model (RBF
+  SVM, HOG). The upper-body garments form the dominant block of errors.}
   \label{fig:errors}
 \end{figure*}
 
-\textbf{Misclassified images.} Fig.~\ref{fig:mis} shows the first 16 test shirts (in test-set order, not hand-picked)
-predicted as T-shirt/top. Many are short-sleeved, collarless or patterned; at $28\times28$ the collar and buttons that
-define a shirt cover only a few pixels, and some images are ambiguous even to a person.
+\textbf{Inspecting the mistakes.} \Cref{fig:mis} shows the first 16 test shirts, in test-set order and not hand-picked,
+that the selected model labels T-shirt/top. Many are short-sleeved, collarless or patterned. At $28\times28$ the collar
+and buttons that define a shirt cover only a handful of pixels, and several images are ambiguous even to a human.
 
 \begin{figure}[t]
   \centering
-  \includegraphics[width=0.9\linewidth]{errors_misclassified_shirt_vs_t-shirt_top.png}
-  \caption{The first 16 test images of class Shirt predicted as T-shirt/top by the selected model (104 in total).}
+  \includegraphics[width=0.78\linewidth]{errors_misclassified_shirt_vs_t-shirt_top.png}
+  \caption{The first 16 (of 104) test images of class Shirt predicted as T-shirt/top by the selected model.}
   \label{fig:mis}
 \end{figure}
 
-\textbf{Do the two best models make the same mistakes?} Comparing the saved predictions of the RBF SVM on HOG and on
-pixels: 8,593 images are right for both, 515 wrong for both, 377 wrong only with HOG and 515 wrong only with pixels. HOG
-therefore fixes 138 more images than it breaks, exactly the 1.38-point test gap. Of the 515 shared mistakes, 391 have the
-\emph{same} wrong label and 397 are upper-body garments. When two models built on very different features make the same
-mistake, the image itself is likely ambiguous rather than the model unlucky.
+\textbf{Do the two best models fail on the same images?} \Cref{tab:agree} cross-tabulates the saved predictions of the
+RBF SVM on HOG and on pixels. HOG fixes 515 images and breaks 377---a net gain of 138, exactly the 1.38\pp{} test gap.
+Of the 515 images both models miss, 391 (76\%) receive the \emph{same} wrong label and 397 (77\%) are upper-body garments.
+When two models built on very different representations make the same mistake, the image itself is the likely cause,
+not the model. This residual error is what a stronger representation must address.
+
+\begin{table}[t]
+  \centering
+  \caption{Agreement of the Two Best Models on the 10{,}000 Test Images}
+  \label{tab:agree}
+  \begin{tabular}{@{}l c c r@{}}
+    \toprule
+    & \multicolumn{2}{c}{RBF SVM / pixels} & \\
+    \cmidrule(lr){2-3}
+    RBF SVM / HOG & correct & wrong & Total \\
+    \midrule
+    correct & 8{,}593 & 515 & 9{,}108 \\
+    wrong   & 377     & 515 & 892 \\
+    \midrule
+    Total   & 8{,}970 & 1{,}030 & 10{,}000 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 % =====================================================================================
 \section{Discussion and Limitations}
+\label{sec:discussion}
 \begin{itemize}
-  \item \textbf{Grid edges.} Three models selected a value at the edge of their grid; wider grids might add a little
-        accuracy. We kept the planned grids to avoid extra test evaluations.
-  \item \textbf{Optimistic validation.} Validation accuracy is above test accuracy for all ten trained models (by
-        0.02 to 2.05 points), as expected when the best of several settings is selected on validation~\cite{cawley2010overfitting}.
-        The ranking is unchanged, and the untouched test score is what we report.
+  \item \textbf{Grid boundaries.} Three models selected a value on the edge of their grid, so wider grids might add a
+        little accuracy. We kept the planned grids rather than spend additional test evaluations.
+  \item \textbf{Optimistic validation.} Validation accuracy exceeds test accuracy for all ten trained models, by
+        0.02--2.05\pp, as expected when the best of several settings is selected on validation~\cite{cawley2010overfitting}.
+        The model ranking is unchanged, and we report the untouched test score.
+  \item \textbf{RBF tuning on a subset.} The RBF grid was searched on 10k images; settings that are best at 10k may not be
+        best at 54k, so the RBF results are, if anything, a lower bound.
   \item \textbf{Timing.} Timings come from two laptops (Apple M3 and M3 Pro) and two Logistic Regression timings are
-        excluded, so only large speed gaps (10$\times$ or more) should be read as firm.
-  \item \textbf{Cross-validation} was run on a 10,000-image subset for time reasons, so it measures stability, not final
-        accuracy.
+        excluded; only large gaps ($\ge10\times$) should be read as firm.
+  \item \textbf{Cross-validation} used a 10k subset for time reasons, so it measures stability, not final accuracy.
+  \item \textbf{Single seed.} Random Forest results come from one seed; seed variance was not measured.
 \end{itemize}
 
 % =====================================================================================
 \section{Conclusion and Future Work}
-On Fashion-MNIST, a carefully tuned classical pipeline reaches 91.08\% test accuracy with an RBF SVM on HOG features,
-chosen without ever using the test set for a decision. HOG features are the single biggest help for linear models, but
-not for trees or nearest neighbours, and the most accurate model is also by far the slowest. The remaining errors are
-concentrated in four upper-body garments whose distinguishing details (collars, buttons, cuffs) occupy only a few pixels
-and are not captured well by fixed edge histograms.
+\label{sec:conclusion}
+A carefully tuned classical pipeline reaches 91.08\% test accuracy on Fashion-MNIST with an RBF SVM on HOG features,
+selected without using the test set for any decision, and significantly better than the same model on raw pixels. HOG is
+the single largest improvement for linear models but does nothing for trees or nearest neighbors, and the most accurate
+model is also by far the slowest; a 181\,KB Linear SVM on HOG is the most practical deployment choice. The remaining errors
+concentrate in four upper-body garments whose distinguishing details---collars, buttons, cuffs---occupy only a few pixels
+and are poorly captured by fixed edge histograms. Both outcomes were predicted from the data before training.
 
-In Phase 2 we will train a small convolutional network on the \emph{same} split and score it with the \emph{same}
-evaluation code, so it drops straight into Table~\ref{tab:results}. Our hypothesis is that learned local filters can pick
-up those small details and beat 91.08\%, mainly by reducing the Shirt, T-shirt/top, Pullover and Coat confusions.
+\textbf{Phase 2.} We will train a small convolutional network~\cite{lecun1998gradient} (2--3 convolutional blocks with
+pooling, dropout and early stopping) on the \emph{same} split and score it with the \emph{same} evaluation code, so it
+drops directly into \cref{tab:results} and can be compared to the RBF SVM with the same McNemar test. Our hypothesis is
+that learned local filters capture these small details and exceed 91.08\%, chiefly by reducing confusions within
+\{Shirt, T-shirt/top, Pullover, Coat\}.
 
-\textbf{Reproducibility.} Code, the committed split, all result files, figures and a decision log with the reasoning
-behind every choice are available at
-\url{https://github.com/rajdeep-2004/fashion-image-classification-benchmark}. A fresh clone regenerates every result in
-under two minutes.
+\textbf{Reproducibility.} Code, the committed split, all result files, figures and a decision log recording the reason for
+every choice are available at \url{https://github.com/rajdeep-2004/fashion-image-classification-benchmark}. A fresh clone
+regenerates every reported result from the saved artifacts in under two minutes.
 
 % =====================================================================================
 \begin{thebibliography}{99}
 
 \bibitem{xiao2017fashion}
-H.~Xiao, K.~Rasul, and R.~Vollgraf, ``Fashion-MNIST: a novel image dataset for benchmarking machine learning
+H.~Xiao, K.~Rasul, and R.~Vollgraf, ``Fashion-MNIST: A novel image dataset for benchmarking machine learning
 algorithms,'' \emph{arXiv preprint arXiv:1708.07747}, 2017.
 
-\bibitem{dalal2005histograms}
-N.~Dalal and B.~Triggs, ``Histograms of oriented gradients for human detection,'' in \emph{Proc. IEEE Conf. Computer
-Vision and Pattern Recognition (CVPR)}, 2005, pp.~886--893.
-
-\bibitem{cortes1995support}
-C.~Cortes and V.~Vapnik, ``Support-vector networks,'' \emph{Machine Learning}, vol.~20, no.~3, pp.~273--297, 1995.
+\bibitem{cover1967nearest}
+T.~Cover and P.~Hart, ``Nearest neighbor pattern classification,'' \emph{IEEE Trans. Inf. Theory}, vol.~13, no.~1,
+pp.~21--27, 1967.
 
 \bibitem{breiman2001random}
-L.~Breiman, ``Random forests,'' \emph{Machine Learning}, vol.~45, no.~1, pp.~5--32, 2001.
+L.~Breiman, ``Random forests,'' \emph{Mach. Learn.}, vol.~45, no.~1, pp.~5--32, 2001.
 
-\bibitem{cover1967nearest}
-T.~Cover and P.~Hart, ``Nearest neighbor pattern classification,'' \emph{IEEE Trans. Information Theory}, vol.~13,
-no.~1, pp.~21--27, 1967.
+\bibitem{cortes1995support}
+C.~Cortes and V.~Vapnik, ``Support-vector networks,'' \emph{Mach. Learn.}, vol.~20, no.~3, pp.~273--297, 1995.
 
 \bibitem{fan2008liblinear}
 R.-E.~Fan, K.-W.~Chang, C.-J.~Hsieh, X.-R.~Wang, and C.-J.~Lin, ``LIBLINEAR: A library for large linear
-classification,'' \emph{Journal of Machine Learning Research}, vol.~9, pp.~1871--1874, 2008.
+classification,'' \emph{J. Mach. Learn. Res.}, vol.~9, pp.~1871--1874, 2008.
 
-\bibitem{pedregosa2011scikit}
-F.~Pedregosa \emph{et al.}, ``Scikit-learn: Machine learning in Python,'' \emph{Journal of Machine Learning Research},
-vol.~12, pp.~2825--2830, 2011.
-
-\bibitem{vanderwalt2014scikit}
-S.~van der Walt \emph{et al.}, ``scikit-image: image processing in Python,'' \emph{PeerJ}, vol.~2, p.~e453, 2014.
-
-\bibitem{vandermaaten2008tsne}
-L.~van der Maaten and G.~Hinton, ``Visualizing data using t-SNE,'' \emph{Journal of Machine Learning Research}, vol.~9,
-pp.~2579--2605, 2008.
+\bibitem{dalal2005histograms}
+N.~Dalal and B.~Triggs, ``Histograms of oriented gradients for human detection,'' in \emph{Proc. IEEE Conf. Comput.
+Vis. Pattern Recognit. (CVPR)}, 2005, pp.~886--893.
 
 \bibitem{kaufman2012leakage}
 S.~Kaufman, S.~Rosset, C.~Perlich, and O.~Stitelman, ``Leakage in data mining: Formulation, detection, and avoidance,''
-\emph{ACM Trans. Knowledge Discovery from Data}, vol.~6, no.~4, pp.~1--21, 2012.
+\emph{ACM Trans. Knowl. Discov. Data}, vol.~6, no.~4, pp.~1--21, 2012.
 
 \bibitem{cawley2010overfitting}
 G.~C.~Cawley and N.~L.~C.~Talbot, ``On over-fitting in model selection and subsequent selection bias in performance
-evaluation,'' \emph{Journal of Machine Learning Research}, vol.~11, pp.~2079--2107, 2010.
+evaluation,'' \emph{J. Mach. Learn. Res.}, vol.~11, pp.~2079--2107, 2010.
+
+\bibitem{pedregosa2011scikit}
+F.~Pedregosa \emph{et al.}, ``Scikit-learn: Machine learning in Python,'' \emph{J. Mach. Learn. Res.}, vol.~12,
+pp.~2825--2830, 2011.
+
+\bibitem{vanderwalt2014scikit}
+S.~van der Walt \emph{et al.}, ``scikit-image: Image processing in Python,'' \emph{PeerJ}, vol.~2, p.~e453, 2014.
+
+\bibitem{vandermaaten2008tsne}
+L.~van der Maaten and G.~Hinton, ``Visualizing data using t-SNE,'' \emph{J. Mach. Learn. Res.}, vol.~9,
+pp.~2579--2605, 2008.
+
+\bibitem{mcnemar1947note}
+Q.~McNemar, ``Note on the sampling error of the difference between correlated proportions or percentages,''
+\emph{Psychometrika}, vol.~12, no.~2, pp.~153--157, 1947.
+
+\bibitem{lecun1998gradient}
+Y.~LeCun, L.~Bottou, Y.~Bengio, and P.~Haffner, ``Gradient-based learning applied to document recognition,''
+\emph{Proc. IEEE}, vol.~86, no.~11, pp.~2278--2324, 1998.
 
 \end{thebibliography}
 
