@@ -21,8 +21,9 @@ The hardest class is **Shirt**, which is mostly confused with T-shirt/top, Pullo
 8. [Limitations](#8-limitations)
 9. [Next: Capstone Phase 2 (CNN)](#9-next-capstone-phase-2-cnn)
 10. [Repository layout and docs](#10-repository-layout-and-docs)
-11. [Troubleshooting](#11-troubleshooting)
-12. [Team](#12-team)
+11. [Report and slides](#11-report-and-slides)
+12. [Troubleshooting](#12-troubleshooting)
+13. [Team](#13-team)
 
 ## 1. Research questions
 | # | Question |
@@ -186,13 +187,54 @@ images both RBF SVMs get wrong are in these classes).
 
 ## 10. Repository layout and docs
 ```
-src/            config, utils, data, features, models_linear, models_tree_kernel, experiment, evaluate, results
-notebooks/      01_data_eda → 05_results_analysis (one per stage, committed with outputs)
-data/splits/    val_indices.npy (the fixed validation split; data/raw/ and features/ are not committed)
-results/        metrics/*.json, summary.csv, test_log.csv, hog_sweep.csv, figures/*.png (all written by code)
-docs/           prd, architecture, system-design, data-formats, module-interfaces, decisions, progress, phases/v1/
-AGENTS.md       rules for every contributor and AI tool (including the no-leakage rules)
-CONTRIBUTING.md step-by-step contributor workflow
+fashion-image-classification-benchmark/
+├── README.md                    this file
+├── requirements.txt             pinned Python dependencies
+├── AGENTS.md                    rules for every contributor and AI tool (including the no-leakage rules)
+├── CONTRIBUTING.md              step-by-step contributor workflow and troubleshooting
+├── CLAUDE.md                    project notes for Claude Code
+├── idea.md                      early brainstorming (superseded by docs/)
+├── .github/
+│   └── pull_request_template.md
+├── src/                         reusable pipeline code (notebooks only call these)
+│   ├── config.py                seed, sizes, class names, paths, HOG settings, n_jobs
+│   ├── utils.py                 seeding, timing, save_fig, JSON helpers
+│   ├── data.py                  download, checksum check, loading, fixed train/val split
+│   ├── features.py              raw-pixel and HOG features, cached in features/
+│   ├── models_linear.py         Dummy, Logistic Regression, kNN pipelines + tuning grids
+│   ├── models_tree_kernel.py    Random Forest, LinearSVC, RBF SVM pipelines + tuning grids
+│   ├── evaluate.py              shared metrics, timing and model-size measurement
+│   ├── experiment.py            tune on val; final_test_run() is the only place test data is used
+│   └── results.py               summary table, comparison plots, error analysis
+├── notebooks/                   one per stage, committed with outputs; run in order
+│   ├── 01_data_eda.ipynb
+│   ├── 02_features.ipynb
+│   ├── 03_linear_knn.ipynb
+│   ├── 04_rf_svm.ipynb
+│   └── 05_results_analysis.ipynb
+├── data/
+│   ├── splits/val_indices.npy   the fixed validation split (committed)
+│   └── raw/                     downloaded dataset (not committed)
+├── features/                    cached feature arrays (not committed, rebuilt by code)
+├── results/                     everything here is written by code
+│   ├── metrics/                 27 JSONs: <model>_<features>_val/test.json, plus RBF SVM CV and full-train val
+│   ├── figures/                 32 PNGs: eda_*, features_*, linear_*, treekernel_*, results_*, errors_*
+│   ├── summary.csv              one row per experiment (12 rows)
+│   ├── test_log.csv             audit trail: one row per test evaluation
+│   └── hog_sweep.csv            HOG settings tried on val
+├── report/                      IEEE report (LaTeX + PDF), slides (PDF + source), team walkthrough
+└── docs/
+    ├── README.md                index of the docs
+    ├── prd.md                   goals, scope, research questions, sanity ranges
+    ├── architecture.md          components and folder layout
+    ├── system-design.md         pipeline flow and leakage rules
+    ├── data-formats.md          format of every saved file
+    ├── module-interfaces.md     signature of every src/ function
+    ├── decisions.md             every decision and why
+    ├── progress.md              phase status and session log
+    └── phases/
+        ├── _phase-template.md
+        └── v1/                  phase-01 … phase-05 task files
 ```
 | Want to know… | Read |
 |---|---|
@@ -203,7 +245,13 @@ CONTRIBUTING.md step-by-step contributor workflow
 | What each `src/` function takes and returns | [`docs/module-interfaces.md`](docs/module-interfaces.md) |
 | Why each choice was made | [`docs/decisions.md`](docs/decisions.md) |
 
-## 11. Troubleshooting
+## 11. Report and slides
+[`report/`](report/) holds the project report and presentation:
+- `report.pdf` / `report.tex`: the IEEE-style report and its LaTeX source
+- `ppt.pdf` / `ppt.md`: the presentation slides and their source text
+- `presentation.md`: team walkthrough of the project for the viva
+
+## 12. Troubleshooting
 | Problem | Fix |
 |---|---|
 | `ModuleNotFoundError: No module named 'src'` | Run notebooks from the repo (the first cell adds the repo root to the path) |
@@ -212,7 +260,7 @@ CONTRIBUTING.md step-by-step contributor workflow
 | Kernel dies / out of memory | Close other apps; lower `N_JOBS` in `src/config.py` if needed (8 GB RAM is enough) |
 | `WARNING: … evaluated on test 2 times` | A test evaluation was re-run; explain why in `docs/decisions.md` |
 
-## 12. Team
+## 13. Team
 | # | Name | Enrollment No. | Work done |
 |---|---|---|---|
 | 1 | Tanmay Singh | 2401010476 | **Data pipeline & EDA:** dataset download and checksum checks, data sanity checks, fixed train/val/test split, exploratory analysis |
