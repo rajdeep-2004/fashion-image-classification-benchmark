@@ -1,7 +1,8 @@
 """Phase 05: summary table, comparison plots, best-model choice and error analysis.
 
-Reads only saved metrics JSONs (results/metrics/). Never loads test features (AGENTS.md §4).
-Tasks 05.1-05.3 (Anand) are implemented; the error-analysis functions (05.4, Omved) are stubs (D-031).
+Everything here reads saved results (results/metrics/*.json); nothing is retrained or re-tested. The error analysis also
+reads the true test labels and images via load_splits(), the phase 05 exception in AGENTS.md §4: it only looks at
+predictions that final_test_run() already saved. Tasks 05.1-05.3 by Anand, 05.4 by Omved (D-031).
 """
 import json
 
@@ -10,6 +11,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from src import config, utils
+from src.data import load_splits
 
 MODEL_ORDER = ["dummy", "logreg", "knn", "rf", "linear_svm", "rbf_svm"]
 FEATURE_ORDER = ["pixels", "hog"]
@@ -172,23 +174,106 @@ def plot_recall_heatmap(df: pd.DataFrame) -> plt.Figure:
     return fig
 
 
-# --- 3. Error analysis (Task 05.4, Omved, D-031): not built yet -------------------
+# --- 3. Error analysis of saved test predictions (Task 05.4, D-032) ---------------
 
-def plot_confusion(experiment: str, normalize: bool = True):
-    """Normalised confusion matrix of one experiment (Task 05.4)."""
-    raise NotImplementedError("plot_confusion is Task 05.4 (Omved, D-031).")
-
-
-def top_confused_pairs(experiment: str, k: int = 5):
-    """Top-k off-diagonal (true, pred) pairs as a DataFrame (Task 05.4)."""
-    raise NotImplementedError("top_confused_pairs is Task 05.4 (Omved, D-031).")
+def _saved_test(experiment: str) -> dict:
+    return _read_json(config.METRICS_DIR / f"{experiment}_test.json")
 
 
-def plot_misclassified(experiment: str, true_c: int, pred_c: int, n: int = 16):
-    """Grid of test images of class true_c predicted as pred_c (Task 05.4)."""
-    raise NotImplementedError("plot_misclassified is Task 05.4 (Omved, D-031).")
+def _class_index(c) -> int:
+    """Accept a class index (0-9) or a class name such as 'Shirt'."""
+    if isinstance(c, str):
+        if c not in config.CLASS_NAMES:
+            raise ValueError(f"Unknown class name {c!r}; use one of {config.CLASS_NAMES}")
+        return config.CLASS_NAMES.index(c)
+    if not 0 <= int(c) < config.NUM_CLASSES:
+        raise ValueError(f"Class index must be 0-{config.NUM_CLASSES - 1}, got {c}")
+    return int(c)
 
 
-def model_agreement(exp_a: str, exp_b: str):
-    """Agreement counts between two experiments' saved y_pred (Task 05.4)."""
-    raise NotImplementedError("model_agreement is Task 05.4 (Omved, D-031).")
+def plot_confusion(experiment: str, normalize: bool = True) -> plt.Figure:
+    """Confusion matrix from the saved test JSON (rows = true class). Saves errors_confusion_{experiment}.png.
+
+    normalize=True divides each row by its total, so the diagonal is each class's recall.
+    """
+    cm = np.asarray(_saved_test(experiment)["confusion_matrix"])
+    matrix = cm / cm.sum(axis=1, keepdims=True) if normalize else cm
+    vmax = 1.0 if normalize else cm.max()
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+    im = ax.imshow(matrix, cmap="Blues", vmin=0, vmax=vmax)
+    ax.set_title(f"Confusion Matrix: {experiment} ({'row-normalised' if normalize else 'counts'})", fontsize=13, pad=14)
+    ax.set_xlabel("Predicted Class", fontsize=11, labelpad=8)
+    ax.set_ylabel("Actual Class", fontsize=11, labelpad=8)
+    ax.set_xticks(range(config.NUM_CLASSES))
+    ax.set_xticklabels(config.CLASS_NAMES, rotation=35, ha="right", fontsize=9.5)
+    ax.set_yticks(range(config.NUM_CLASSES))
+    ax.set_yticklabels(config.CLASS_NAMES, fontsize=9.5)
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04).set_label("Proportion" if normalize else "Count", fontsize=10)
+    for i, j in np.ndindex(matrix.shape):
+        ax.text(j, i, f"{matrix[i, j]:.2f}" if normalize else str(matrix[i, j]), ha="center", va="center",
+                fontsize=8.5, color="white" if matrix[i, j] > vmax / 2 else "black")
+    fig.tight_layout()
+    utils.save_fig(fig, f"errors_confusion_{experiment}")
+    return fig
+
+
+def top_confused_pairs(experiment: str, k: int = 5) -> pd.DataFrame:
+    """The k largest off-diagonal confusion-matrix cells as (true, pred, count, rate); rate = count / class total."""
+    cm = np.asarray(_saved_test(experiment)["confusion_matrix"])
+    rows = [{"true": config.CLASS_NAMES[i], "pred": config.CLASS_NAMES[j], "count": int(cm[i, j]),
+             "rate": round(cm[i, j] / cm[i].sum(), 4)}
+            for i, j in np.ndindex(cm.shape) if i != j]
+    return pd.DataFrame(rows).sort_values("count", ascending=False, kind="stable").head(k).reset_index(drop=True)
+
+
+def plot_misclassified(experiment: str, true_c, pred_c, n: int = 16) -> plt.Figure:
+    """Grid of the first n test images (in test order, not hand-picked) of class true_c predicted as pred_c.
+
+    Classes can be indices or names. Saves errors_misclassified_{true}_vs_{pred}.png.
+    """
+    true_c, pred_c = _class_index(true_c), _class_index(pred_c)
+    y_pred = np.asarray(_saved_test(experiment)["y_pred"])
+    splits = load_splits(verbose=False)
+    matches = np.flatnonzero((splits["y_test"] == true_c) & (y_pred == pred_c))
+    if len(matches) == 0:
+        raise ValueError(f"{experiment} never predicts {config.CLASS_NAMES[pred_c]} for a true "
+                         f"{config.CLASS_NAMES[true_c]}; pick a pair from top_confused_pairs().")
+    shown = matches[:n]
+    ncols = min(4, len(shown))
+    nrows = int(np.ceil(len(shown) / ncols))
+
+    fig, axes = plt.subplots(nrows, ncols, figsize=(2.2 * ncols, 2.4 * nrows), squeeze=False)
+    for ax in axes.flat:
+        ax.axis("off")
+    for ax, idx in zip(axes.flat, shown):
+        ax.imshow(splits["X_test"][idx], cmap="gray", vmin=0.0, vmax=1.0)
+        ax.set_title(f"Test #{idx}", fontsize=9)
+    true_name, pred_name = config.CLASS_NAMES[true_c], config.CLASS_NAMES[pred_c]
+    fig.suptitle(f"Misclassified: True '{true_name}' -> Pred '{pred_name}'\n"
+                 f"({experiment}, showing {len(shown)} of {len(matches)})", fontsize=12, y=1.02)
+    fig.tight_layout()
+    slug = lambda name: name.lower().replace("/", "_").replace(" ", "_")
+    utils.save_fig(fig, f"errors_misclassified_{slug(true_name)}_vs_{slug(pred_name)}")
+    return fig
+
+
+def model_agreement(exp_a: str, exp_b: str) -> dict:
+    """Compare two experiments' saved test predictions image by image.
+
+    Returns counts: both_correct, both_incorrect, only_a_incorrect, only_b_incorrect, same_wrong_label (both wrong with
+    the same label), total, and agreement_pct (% of images where both predict the same label, right or wrong).
+    """
+    pred_a = np.asarray(_saved_test(exp_a)["y_pred"])
+    pred_b = np.asarray(_saved_test(exp_b)["y_pred"])
+    y_test = load_splits(verbose=False)["y_test"]
+    right_a, right_b = pred_a == y_test, pred_b == y_test
+    return {
+        "both_correct": int(np.sum(right_a & right_b)),
+        "both_incorrect": int(np.sum(~right_a & ~right_b)),
+        "only_a_incorrect": int(np.sum(~right_a & right_b)),
+        "only_b_incorrect": int(np.sum(right_a & ~right_b)),
+        "same_wrong_label": int(np.sum(~right_a & ~right_b & (pred_a == pred_b))),
+        "total": len(y_test),
+        "agreement_pct": round(float(np.mean(pred_a == pred_b) * 100), 2),
+    }

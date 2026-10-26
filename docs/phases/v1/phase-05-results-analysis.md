@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | Owner | Anand Mishra (05.1–05.3), Omved Nagre (05.4–05.7), split per D-031 |
-| Status | in-progress |
-| Branch | Part A: `phase/v1-05-anand-results` (PR #3); Part B: new branch from `main` after PR #3 merges |
+| Status | review |
+| Branch | Part A: `phase/v1-05-anand-results` (PR #3, merged); Part B: `phase/v1-05-omved-analysis` (PR #4) |
 | Depends on | Phase v1/04 |
 | PRD features | F-11, F-12, F-13, F-14 |
 | idea.md workstream | WS5 — Evaluation, Error Analysis & Integration |
@@ -77,19 +77,19 @@ From v1/04 (PR #2 by Tanmay, merged 2026-10-25, review fixes in D-028):
 - [x] 05.1 — `results.py`: `load_all_metrics`, `build_summary`, `pick_best_experiment` → `feat(results): aggregate metrics into summary table`
 - [x] 05.2 — Comparison plots (RQ2, RQ3, RQ4) → `feat(results): add cross-model comparison plots`
 - [x] 05.3 — 5-fold CV on the best (by val) experiment → `feat(results): add stability check for best model`
-- [ ] 05.4 — Error analysis: confusion matrix, top pairs, misclassified grids, model agreement → `feat(errors): add error analysis`
-- [ ] 05.5 — `05_results_analysis.ipynb` write-up: RQ answers + Phase 2 motivation → `feat(results): add results and analysis notebook`
-- [ ] 05.6 — Full README → `docs(readme): add setup, run order and results`
-- [ ] 05.7 — Update docs touched by this phase; progress shows v1 complete → `docs(phase-05): update docs and decisions`
+- [x] 05.4 — Error analysis: confusion matrix, top pairs, misclassified grids, model agreement → `feat(errors): add error analysis`
+- [x] 05.5 — `05_results_analysis.ipynb` write-up: RQ answers + Phase 2 motivation → `feat(results): add results and analysis notebook`
+- [x] 05.6 — Full README → `docs(readme): add setup, run order and results`
+- [x] 05.7 — Update docs touched by this phase; progress shows v1 complete → `docs(phase-05): update docs and decisions`
 
 ## Done criteria
 - [x] `summary.csv` contains all 12 experiments (dummy, logreg, knn, rf, linear_svm, rbf_svm × pixels, hog)
 - [x] All figures in `results/figures/` are produced by code; none made by hand
 - [x] `test_log.csv` shows each experiment evaluated once (or repeats explained in `decisions.md`); still 12 rows
-- [ ] `pick_best_experiment()` returns `rbf_svm_hog`, chosen from comparable val scores (D-029); CV and error analysis use it *(pick + CV done in Part A; error analysis is Part B)*
-- [ ] RQ1–RQ4 answered in notebook 05
-- [ ] Fresh-clone run following only the README reproduces the README table
-- [ ] Docs match what was built; decisions logged
+- [x] `pick_best_experiment()` returns `rbf_svm_hog`, chosen from comparable val scores (D-029); CV and error analysis use it
+- [x] RQ1–RQ4 answered in notebook 05
+- [x] Fresh-clone run following only the README reproduces the README table
+- [x] Docs match what was built; decisions logged
 
 ## How to verify
 1. Delete `results/summary.csv` and the figures → run notebook 05 → they are regenerated and identical.
@@ -110,9 +110,30 @@ Done in Part A (PR #3): `load_all_metrics`, `comparable_val_acc`, `pick_best_exp
 
 ## Phase summary
 - **Built:**
+  - **Part A (Anand Mishra, PR #3):** Implemented metrics loading (`load_all_metrics`), comparable validation scoring (`comparable_val_acc`), best-experiment selection (`pick_best_experiment`), summary table aggregation (`build_summary` writing `results/summary.csv`), cross-model comparison plots (`plot_pixels_vs_hog`, `plot_acc_vs_inference`, `plot_recall_heatmap`), and 5-fold CV on the best model (`results/metrics/rbf_svm_hog_cv.json`).
+  - **Part B (Omved Nagre, PR #4):** Implemented comprehensive error analysis in `src/results.py`: row-normalized confusion matrix plotting (`plot_confusion`), top-k off-diagonal error pair extraction (`top_confused_pairs`), misclassified test image galleries (`plot_misclassified`), and model agreement contingency analysis (`model_agreement`). Generated figures in `results/figures/` (`errors_confusion_rbf_svm_hog.png`, five `errors_misclassified_*.png`). Created and executed `notebooks/05_results_analysis.ipynb` with complete pre-rendered outputs synthesizing all benchmark findings, answering RQ1–RQ4, and motivating Capstone Phase 2. Rewrote root `README.md` with complete setup, run order, results table, layout, and scientific reproducibility guidelines.
+  - **Review fixes (lead, D-032):** corrected numbers in the notebook/README (HOG extraction 216 ms not ~30 ms, kNN k=3, recall ranges, error shares), simpler error-analysis code, fresh-clone run of notebooks 01→05.
+- **Key results:**
+  - Best model by comparable validation accuracy: `rbf_svm_hog` (**91.57%** val acc, **91.08%** test acc, **91.08%** Macro F1).
+  - 5-fold CV stability: **0.8775 ± 0.0054** on 10k subset (lower than val score because each CV fold trains on 8k images vs. 54k for val).
+  - HOG impact: Linear models benefit massively (+5.20% for LinearSVC to 88.98%, +4.14% for Logistic Regression to 88.86%), whereas Random Forest slightly degrades (-0.53% to 87.03%) due to orthogonal split limitations on dense gradient histograms.
+  - Speed trade-off, end to end per 1,000 images incl. 216 ms HOG extraction (D-032): `rf_pixels` is fastest above 87% (~12 ms, 87.56%, but 366 MB); `linear_svm_hog` is the best accuracy for its size (~219 ms, 88.98%, 181 KB); `rbf_svm_hog` is the most accurate but ~29 s (upper bound, D-028).
+  - Error distribution: Shirt (Class 6) is the hardest class for all 10 trained models (recall 50.9% to 75.2%). Mistakes among T-shirt/Pullover/Coat/Shirt are 56–66% of each model's errors. Top confused pairs are Shirt → T-shirt/top (104 errors, 10.4%) and T-shirt/top → Shirt (91 errors, 9.1%).
+  - Model agreement (`rbf_svm_hog` vs. `rbf_svm_pixels`): 89.84% overall agreement. Out of 515 mutual test mistakes, 391 (75.9%) share the exact same incorrect class label; 397 of the 515 are upper-body garments.
 - **Key decisions:**
+  - D-029: Refit subset-tuned RBF SVM on full 54k train set to establish comparable validation rankings.
+  - D-030: Handled non-comparable LR timings as NaN; excluded Dummy zero latency from logarithmic speed plots.
+  - D-031: Formalized Phase 05 split into two sequential PRs across two contributors (Part A: tasks 05.1–05.3, Part B: tasks 05.4–05.7).
+  - D-032: Error analysis only from saved predictions (first-n images, no cherry-picking); RQ3 uses end-to-end time including HOG extraction.
 - **Known limitations:**
+  - Hyperparameter grid boundaries: LR best C=0.01 (smallest tried, D-020), LinearSVC best C=0.01 (smallest tried, D-026), RBF SVM best C=10 (largest tried, D-027). Grids were held fixed to prevent post-hoc test leakage.
+  - Timing hardware caveats: kNN timed on Apple M3, RF/SVMs on Apple M3 Pro, LR timings not comparable (D-024), rbf_svm_hog inference an upper bound (D-028).
+  - Val accuracy is 0.02–2.05 points above test for every model (choosing the best setting on val flatters it slightly); val has ~±0.4 points of sampling noise.
+  - CV (0.8775 ± 0.0054) is on a 10k subset, so it measures stability, not final accuracy.
 - **Next phase should know:**
+  - Capstone Phase 1 (classical ML) is code-complete!
+  - Phase 2 (CNN) can directly import `load_splits()` from `src.data` and `evaluate()` from `src.evaluate` to plug directly into this benchmark.
+  - The primary target for the Phase 2 CNN is the upper-body garment confusion cluster (Shirt, T-shirt, Pullover, Coat) (56–66% of each classical model's errors; 397 of the 515 images both RBF SVMs get wrong).
 
 ## Next phase preview
 v1 is finished. Next: report and slides (parked), then plan capstone Phase 2 as `docs/phases/v2/` (CNN using the same

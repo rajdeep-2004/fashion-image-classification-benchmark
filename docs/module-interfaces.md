@@ -84,10 +84,10 @@ Model files only build unfitted Pipelines and hold grids. Figures (e.g. the LR w
 | `plot_pixels_vs_hog(df)` | summary df | Figure | RQ2 |
 | `plot_acc_vs_inference(df)` | summary df | Figure | RQ3 |
 | `plot_recall_heatmap(df)` | summary df | Figure | RQ4 |
-| `plot_confusion(experiment, normalize=True)` | experiment id | Figure | |
+| `plot_confusion(experiment, normalize=True)` | experiment id | Figure | From the saved `confusion_matrix`; rows = true class; saves `errors_confusion_{experiment}.png` |
 | `top_confused_pairs(experiment, k=5)` | experiment id | DataFrame `(true, pred, count, rate)` | Off-diagonal cells of the confusion matrix |
-| `plot_misclassified(experiment, true_c, pred_c, n=16)` | experiment id, class pair | Figure | Uses stored `y_pred` + `load_splits()["X_test"]` |
-| `model_agreement(exp_a, exp_b)` | two experiment ids | dict: both right / both wrong / only A wrong / only B wrong, plus a same-wrong-label count | |
+| `plot_misclassified(experiment, true_c, pred_c, n=16)` | experiment id, class pair (index 0–9 or class name) | Figure | Uses stored `y_pred` + `load_splits()["X_test"]`; shows the first `n` matches in test order (not hand-picked) |
+| `model_agreement(exp_a, exp_b)` | two experiment ids | dict: `both_correct`, `both_incorrect`, `only_a_incorrect`, `only_b_incorrect`, `same_wrong_label`, `total`, `agreement_pct` | From the two saved `y_pred` + `load_splits()["y_test"]` |
 
 ## Typical notebook usage
 ```python

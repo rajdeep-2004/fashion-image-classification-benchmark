@@ -45,6 +45,7 @@ Rules:
 | D-029 | 2026-10-25 | v1/05 prep | Comparable val scores: refit subset-tuned RBF SVM on full train before choosing the best model | Active |
 | D-030 | 2026-10-25 | v1/05 | Phase 05 aggregation: validation-selected model ranking and non-comparable timing rules | Active |
 | D-031 | 2026-10-26 | v1/05 | Phase 05 split between two owners and two PRs | Active |
+| D-032 | 2026-10-26 | v1/05 | Error analysis from saved predictions; end-to-end speed counts HOG extraction | Active |
 
 ---
 
@@ -1427,3 +1428,60 @@ Each person gets their own commits and PR, and Part B starts from a reviewed, me
 
 **Revisit if**
 Part B finds it needs to change a Part A function's signature or output; then update `module-interfaces.md` in Part B's PR.
+
+---
+
+### D-032 — Error analysis from saved predictions; end-to-end speed counts HOG extraction
+- **Date:** 2026-10-26
+- **Phase:** v1/05 — Results, Error Analysis & README (Part B, Omved Nagre; review fixes by the lead)
+- **Status:** Active
+- **Type:** algorithm
+
+**Context**
+Task 05.4 needs a confusion matrix, the top-5 confused pairs, image grids of those mistakes, and how often the two best
+models agree, without any new test predictions (AGENTS.md §4). The RQ3 answer also has to compare speeds fairly: the
+saved `inference_ms_per_1000` times only the model's `predict()`, but HOG models first need HOG features computed.
+The first version of the write-up assumed HOG extraction took ~30 ms per 1,000 images; the measured value is 216 ms.
+
+**Decision**
+1. All error analysis reads the saved `confusion_matrix` and `y_pred` from `{experiment}_test.json`; the grids and the
+   agreement counts also read the true test labels/images from `load_splits()`. Nothing is predicted again.
+2. Image grids show the **first n** matching test images in test-set order, so nobody can be accused of picking examples.
+3. RQ3 is answered with **end-to-end** time per 1,000 images: model time + 216 ms HOG extraction for HOG models
+   (`extract_s_per_1000` for the chosen setting in `results/hog_sweep.csv`). The RQ3 chart still plots model-only time.
+
+**Alternatives considered**
+| Option | Why not chosen |
+|---|---|
+| Re-predict the test set inside the error-analysis functions | A second test use per model; breaks the one-test rule and the audit log |
+| Show the "most confident" or hand-picked mistakes | Needs model scores we didn't save, or invites cherry-picking |
+| Compare model-only times in RQ3 | Makes LinearSVC HOG look ~5× faster than RF pixels, when end to end it is ~18× slower |
+| Re-time HOG extraction on the M3 Pro | Not needed for an order-of-magnitude answer; the phase 02 number is recorded and reproducible |
+
+**Why**
+Saved predictions are exactly what was tested, so the analysis is consistent with the reported accuracy and costs nothing.
+End-to-end time is what a user of the model would actually wait for.
+
+**How it works**
+1. `top_confused_pairs("rbf_svm_hog")` scans the 90 off-diagonal cells of the saved 10×10 matrix and keeps the 5 largest:
+   Shirt→T-shirt/top 104, T-shirt/top→Shirt 91, Pullover→Shirt 66, Pullover→Coat 61, Shirt→Coat 59 (out of 1,000 per class).
+2. `plot_misclassified` finds test indices where the true label is A and the saved prediction is B, and draws the first 16.
+3. `model_agreement("rbf_svm_hog", "rbf_svm_pixels")`: 8,593 both right, 515 both wrong (391 with the same wrong label,
+   397 of the 515 in T-shirt/Pullover/Coat/Shirt), 377 only HOG wrong, 515 only pixels wrong. HOG's net gain is
+   515 − 377 = 138 images = the 1.38-point test gap.
+4. End-to-end per 1,000 images: rf_pixels ~12 ms (87.56%), linear_svm_hog 2.6 + 216 ≈ 219 ms (88.98%, 181 KB),
+   rbf_svm_hog ~29 s (91.08%). So "fastest above 87%" is RF pixels and "best accuracy for its size" is LinearSVC HOG.
+
+**Files touched**
+- `src/results.py`: `plot_confusion`, `top_confused_pairs`, `plot_misclassified`, `model_agreement`
+- `notebooks/05_results_analysis.ipynb`, `README.md`: RQ3 end-to-end table, corrected numbers
+- `docs/module-interfaces.md`, `docs/data-formats.md` §12: return keys, class-name arguments, figure names
+
+**Concepts worth learning**
+- **Confusion matrix:** rows are the true class, columns the prediction; the diagonal divided by the row total is recall.
+- **Directed confusion pair:** Shirt→T-shirt and T-shirt→Shirt are different mistakes with different counts.
+- **Model agreement:** if two different models make the same mistake, the image is probably ambiguous, not the model unlucky.
+- **End-to-end latency:** everything between "image in" and "label out", including feature extraction.
+
+**Revisit if**
+Timings are re-measured on one machine, or Phase 2 adds a model whose features cost more than its prediction.

@@ -158,3 +158,8 @@ Phase 03 produces `linear_logreg_val_curve_pixels.png`, `linear_logreg_val_curve
 `linear_knn_val_curve_pixels.png`, `linear_knn_val_curve_hog.png`, and `linear_logreg_weights.png`.
 LR curves show every C; kNN curves hold the validation-winning weights/metric fixed while varying k.
 Weight maps are 2×5 standardised-pixel coefficient maps with one symmetric colour scale.
+
+Phase 05 produces `results_pixels_vs_hog.png`, `results_acc_vs_time.png`, `results_recall_heatmap.png`,
+`errors_confusion_{experiment}.png` (the best model: `errors_confusion_rbf_svm_hog.png`) and one
+`errors_misclassified_{true}_vs_{pred}.png` per top-5 confused pair. Class names are lower-cased with `/` and spaces
+turned into `_`, e.g. `errors_misclassified_shirt_vs_t-shirt_top.png`.

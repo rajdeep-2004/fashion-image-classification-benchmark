@@ -1,7 +1,7 @@
 # Progress
 
-**Current phase:** v1/05 — Results, Error Analysis & README (`in-progress`)
-**Branch:** phase/v1-05-anand-results
+**Current phase:** v1/05 — Results, Error Analysis & README (`review`)
+**Branch:** Part A: `phase/v1-05-anand-results` (merged); Part B: `phase/v1-05-omved-analysis`
 **Profile:** lean
 
 ## Phases
@@ -12,7 +12,7 @@
 | 02 | [Features & Evaluation Harness](phases/v1/phase-02-features-harness.md) | Rajdeep | done | phase/v1-02-features-harness | 2026-10-24 | 2026-10-24 |
 | 03 | [Dummy, Logistic Regression & kNN](phases/v1/phase-03-linear-knn.md) | Rajat Srivastav | done | phase/v1-03-linear-knn | 2026-10-24 | 2026-10-24 |
 | 04 | [Random Forest & SVM](phases/v1/phase-04-rf-svm.md) | Tanmay Singh | done | phase/v1-04-rf-svm | 2026-10-24 | 2026-10-25 |
-| 05 | [Results, Error Analysis & README](phases/v1/phase-05-results-analysis.md) | Anand Mishra (A), Omved Nagre (B) | in-progress | phase/v1-05-anand-results (A) | 2026-10-25 | |
+| 05 | [Results, Error Analysis & README](phases/v1/phase-05-results-analysis.md) | Anand Mishra (A), Omved Nagre (B) | review | phase/v1-05-anand-results (A), phase/v1-05-omved-analysis (B) | 2026-10-25 | |
 
 Status values: `not-started` → `in-progress` → `review` → `done`
 
@@ -22,6 +22,16 @@ each phase starts. Full workflow: [`AGENTS.md`](../AGENTS.md) §6.
 
 ## Session log
 <!-- Newest first. 2–4 lines per session. Keep only the last ~10 sessions; older ones are in git history. -->
+### 2026-10-26 (v1/05 Part B review, lead)
+- Audited PR #4: no leakage; error-analysis numbers match the saved predictions. Fixed on the PR branch (D-032): wrong numbers in the write-up (HOG extraction 216 ms not ~30 ms, kNN k=3, recall ranges, error shares, val vs test), simpler error-analysis code, interfaces and figure names synced.
+- Verified: fresh clone, notebooks 01→05 run in ~100 s with 0 errors and every file in `results/` regenerates identically; test_log.csv still 12 rows.
+- Next: merge PR #4, mark v1/05 and v1 done.
+
+### 2026-10-26 (v1/05 Part B — Omved Nagre)
+- Done: Tasks 05.4 (error analysis in results.py: plot_confusion, top_confused_pairs, plot_misclassified, model_agreement; 6 publication figures), 05.5 (notebook 05_results_analysis.ipynb top-to-bottom run with verified outputs, answers to RQ1–RQ4, Phase 2 CNN motivation), 05.6 (complete README.md), and 05.7 (phase close and docs).
+- Verified: summary.csv has 12 rows; best model is rbf_svm_hog (91.08% test acc, 0.8775 CV); top confusion Shirt vs T-shirt/top (10.4%); test_log.csv untouched (MD5 identical, 12 rows). All Done criteria met.
+- Next: Open PR from Omved's fork targeting upstream main for review and merge by team lead.
+
 ### 2026-10-26 (v1/05 Part A review, lead)
 - Audited PR #3: summary.csv, 3 figures and CV JSON all reproduced exactly from code; every summary row re-checked against the raw JSONs; no test use.
 - Fixed on the PR branch: simpler `results.py` (shared `comparable_val_acc()`), RQ3 chart layout and footnote, D-030 claims. D-031 logs the two-owner split.
