@@ -2,7 +2,7 @@
 
 Everything here reads saved results (results/metrics/*.json); nothing is retrained or re-tested. The error analysis also
 reads the true test labels and images via load_splits(), the phase 05 exception in AGENTS.md §4: it only looks at
-predictions that final_test_run() already saved. Tasks 05.1-05.3 by Anand, 05.4 by Omved (D-031).
+predictions that final_test_run() already saved.
 """
 import json
 
