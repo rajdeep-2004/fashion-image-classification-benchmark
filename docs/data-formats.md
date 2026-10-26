@@ -1,6 +1,6 @@
 # Data Formats
 
-> Last updated: 2026-10-24 — Every file the pipeline reads or writes, and exactly what is inside it.
+> Last updated: 2026-10-26 — Every file the pipeline reads or writes, and exactly what is inside it.
 > This project has no database. These files play that role. Change a format here **before** changing the code (see D-010).
 
 ## 1. Naming conventions
@@ -33,7 +33,7 @@ IDX format: gzip file, then a big-endian header (16 bytes for images, 8 bytes fo
 | dtype / shape | `int64`, `(6000,)` |
 | Contents | Sorted indices into the official 60k train set that form the val split. 600 per class. |
 | Train split | All indices 0–59,999 **not** in this file (54,000) |
-| Checksum | MD5 of the file, printed by `load_splits()` and recorded in the README in phase 01 |
+| Checksum | MD5 `54ff6b78b27109cdfc3ebe7204040a07`, printed by `load_splits()` and recorded in the README |
 
 ## 4. In-memory splits — return value of `load_splits()`
 | Key | dtype | Shape | Range |
@@ -152,7 +152,7 @@ For `timing_comparable=false`, retain the experiment and its accuracy metrics, b
 - PNG, 300 dpi, one plot per file, saved only via `utils.save_fig()`.
 - Name pattern: `{stage}_{what}.png`. `stage` is one of `eda`, `features`, `linear`, `treekernel`, `results`, `errors`.
   Examples: `eda_sample_grid.png`, `features_hog_examples.png`, `linear_knn_val_curve_pixels.png`,
-  `results_acc_vs_time.png`, `errors_misclassified_shirt_vs_tshirt.png`.
+  `results_acc_vs_time.png`, `errors_misclassified_shirt_vs_t-shirt_top.png`.
 
 Phase 03 produces `linear_logreg_val_curve_pixels.png`, `linear_logreg_val_curve_hog.png`,
 `linear_knn_val_curve_pixels.png`, `linear_knn_val_curve_hog.png`, and `linear_logreg_weights.png`.

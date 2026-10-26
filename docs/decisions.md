@@ -506,8 +506,17 @@ Rename them to `data-formats.md` (the files the pipeline saves and what's inside
 File names should describe their content. The content plays the same role as a DB schema and API contract
 (a fixed agreement between parts), just for files and functions instead of tables and endpoints.
 
+**How it works**
+Nothing runs differently; only the file names changed. `data-formats.md` lists every file the pipeline saves
+(metrics JSON keys, CSV columns, figure names) and `module-interfaces.md` lists every shared `src/` function with its inputs
+and outputs. A phase that changes a format or signature edits these docs first, in the same PR.
+
 **Files touched**
 - `docs/data-formats.md`, `docs/module-interfaces.md` (renamed), `docs/README.md`, `docs/phases/_phase-template.md`
+
+**Concepts worth learning**
+- **Interface / contract:** an agreed shape for data or a function call, so separate people can build parts that fit together.
+- **Schema:** the exact list of fields (names, types) a stored record must have.
 
 **Revisit if**
 A real database or API is ever added (e.g. a demo app in Phase 2). Then add those docs alongside.
@@ -545,6 +554,10 @@ gives the mistakes.
 **Files touched**
 - `src/evaluate.py` (phase 02), `src/results.py` (phase 05), `docs/data-formats.md` §8
 
+**Concepts worth learning**
+- **Test-set reuse:** every extra prediction on test is another chance to (even unknowingly) tune to it; saving predictions avoids it.
+- **Error analysis:** studying *which* examples a model gets wrong, not just how many.
+
 **Revisit if**
 Phase 2 needs prediction probabilities (e.g. for ensembling). Then add `y_proba` the same way.
 
@@ -571,8 +584,16 @@ GitHub repository and served over HTTPS.
 **Why**
 Same official files, encrypted transport, and a URL anyone can check in the browser.
 
+**How it works**
+`download_raw()` builds each file's URL from `RAW_URL_BASE` + the file name, downloads it over HTTPS (skipping files that
+already exist), then checks its MD5 against `RAW_FILES` in `config.py`. A mismatch deletes the file and raises an error.
+
 **Files touched**
 - `src/config.py`, `src/data.py` (phase 01)
+
+**Concepts worth learning**
+- **HTTPS:** encrypted HTTP; the data can't be read or altered on the way.
+- **Checksum (MD5):** a short fingerprint of a file; if one byte changes, the fingerprint changes.
 
 **Revisit if**
 GitHub rate-limits or blocks the download. Then fall back to the S3 mirror (same MD5s).
@@ -646,8 +667,16 @@ Drop `data/processed/`. `load_splits()` always reads the verified `.gz` files an
 **Why**
 One source of truth (the checksummed raw files + `val_indices.npy`) is simpler and cannot drift.
 
+**How it works**
+`load_raw()` opens the four `.gz` files, skips the IDX header (16 bytes for images, 8 for labels) and reads the bytes into
+NumPy arrays. `load_splits()` then applies `val_indices.npy` and scales pixels to [0, 1] float32. This takes well under a second.
+
 **Files touched**
 - `.gitignore`, `docs/architecture.md`, `docs/phases/v1/phase-01-foundation.md`
+
+**Concepts worth learning**
+- **Single source of truth:** keep one authoritative copy of data so two copies can never disagree.
+- **Cache invalidation:** knowing when a saved copy is stale; avoided entirely by not caching.
 
 **Revisit if**
 Loading ever becomes slow (it won't for 70k 28×28 images). Feature caching in phase 02 is a separate thing and stays.
@@ -814,6 +843,10 @@ Building `experiment.py` raised a few small choices that phases 03–05 rely on.
 | Block a second `final_test_run` | A real bug fix may need a re-run; a warning plus a mandatory explanation is more honest |
 | Parallel CV (`n_jobs=-1`) | Memory risk on 8 GB with models that are already parallel |
 
+**Why**
+Each choice keeps the harness predictable and safe on an 8 GB laptop: a fixed tie rule makes results repeatable, sequential
+CV avoids memory blow-ups, and a warning (instead of a block) keeps honest re-runs possible but visible.
+
 **How it works**
 `tune_on_val` gets data only via `features.get_features(kind, "train" | "val")`. The scratch check replaced
 `get_features` with a version that raises on `"test"`, and tuning ran fine, which proves it never reads test.
@@ -821,6 +854,11 @@ The same check confirmed that the scaler's learned mean equals the training rows
 
 **Files touched**
 - `src/experiment.py`, `src/utils.py`, `src/data.py`, `src/features.py`, `docs/module-interfaces.md`
+
+**Concepts worth learning**
+- **Tie-breaking rule:** a fixed rule for equal scores, so the same data always gives the same choice.
+- **Nested parallelism:** parallel jobs inside parallel jobs multiply the number of processes and memory use.
+- **Audit log:** an append-only record that makes every test-set use visible.
 
 **Revisit if**
 Phase 2's CNN needs a different training loop. It should still finish by calling `evaluate()` and logging the test use.
@@ -841,13 +879,27 @@ The phase 02 plan said to cache features "for all 4 splits". But AGENTS.md rule 
 Notebook 02 caches train / val / trainval only. The test cache is created automatically the first time
 `final_test_run()` asks for it (pixels: instant; HOG: ~3 s).
 
+**Alternatives considered**
+| Option | Why not chosen |
+|---|---|
+| Cache all 4 splits in notebook 02 (the original plan) | Would mean calling `get_features(..., "test")` outside `final_test_run()`, breaking the absolute rule |
+
 **Why**
 HOG and flattening are stateless, so building test features early would not leak anything. But keeping the rule
 **absolute** ("test is read in exactly one function") makes it trivial to audit, both for the professor and for
 reviewers of teammates' PRs. The cost is a few seconds in phase 03.
 
+**How it works**
+`get_features(kind, "test")` is called in exactly one place, inside `final_test_run()`. On its first call it builds the test
+features and saves them to `features/`; later calls read the cache. Searching the code for `"test"` finds only that function
+(and the `data.py` sanity checks), which is what a reviewer checks.
+
 **Files touched**
 - `notebooks/02_features.ipynb`, phase-02 done criteria
+
+**Concepts worth learning**
+- **Stateless transform:** a feature step with nothing learned from data (HOG, flattening), so it can't leak by itself.
+- **Auditability:** a rule simple enough that anyone can verify it by searching the code.
 
 **Revisit if**
 Never for v1.
@@ -1081,6 +1133,10 @@ while architecture.md §4 says `results/` is written only by code.
 3. Expand D-020–D-024 to the full decision template, and add the exact timestamps to D-023.
 4. Make the decision-log format mandatory and visible to every agent (AGENTS.md §6.3 and §7, PR template).
 5. Add a rule: finish **all** tuning for a model before running its `final_test_run` (prevents the D-023 situation).
+
+**Why**
+The merged code had to match the documented module boundaries, and the results folder had to stay trustworthy. Fixing it right
+after the merge kept `main` consistent before phase 04 started building on it.
 
 **Alternatives considered**
 | Option | Why not chosen |
