@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Owner | Anand Mishra (05.1–05.3), Omved Nagre (05.4–05.7), split per D-031 |
-| Status | review |
+| Status | done (closed 2026-10-26) |
 | Branch | Part A: `phase/v1-05-anand-results` (PR #3, merged); Part B: `phase/v1-05-omved-analysis` (PR #4) |
 | Depends on | Phase v1/04 |
 | PRD features | F-11, F-12, F-13, F-14 |

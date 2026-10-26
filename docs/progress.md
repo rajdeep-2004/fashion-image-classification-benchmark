@@ -1,7 +1,7 @@
 # Progress
 
-**Current phase:** v1/05 — Results, Error Analysis & README (`review`)
-**Branch:** Part A: `phase/v1-05-anand-results` (merged); Part B: `phase/v1-05-omved-analysis`
+**Current phase:** none. **v1 is complete** (all 5 phases done; ready to tag `v1.0.0`). Next: report/slides (parked), then plan v2 (CNN).
+**Branch:** —
 **Profile:** lean
 
 ## Phases
@@ -12,7 +12,7 @@
 | 02 | [Features & Evaluation Harness](phases/v1/phase-02-features-harness.md) | Rajdeep | done | phase/v1-02-features-harness | 2026-10-24 | 2026-10-24 |
 | 03 | [Dummy, Logistic Regression & kNN](phases/v1/phase-03-linear-knn.md) | Rajat Srivastav | done | phase/v1-03-linear-knn | 2026-10-24 | 2026-10-24 |
 | 04 | [Random Forest & SVM](phases/v1/phase-04-rf-svm.md) | Tanmay Singh | done | phase/v1-04-rf-svm | 2026-10-24 | 2026-10-25 |
-| 05 | [Results, Error Analysis & README](phases/v1/phase-05-results-analysis.md) | Anand Mishra (A), Omved Nagre (B) | review | phase/v1-05-anand-results (A), phase/v1-05-omved-analysis (B) | 2026-10-25 | |
+| 05 | [Results, Error Analysis & README](phases/v1/phase-05-results-analysis.md) | Anand Mishra (A), Omved Nagre (B) | done | phase/v1-05-anand-results (A), phase/v1-05-omved-analysis (B) | 2026-10-25 | 2026-10-26 |
 
 Status values: `not-started` → `in-progress` → `review` → `done`
 
@@ -22,6 +22,10 @@ each phase starts. Full workflow: [`AGENTS.md`](../AGENTS.md) §6.
 
 ## Session log
 <!-- Newest first. 2–4 lines per session. Keep only the last ~10 sessions; older ones are in git history. -->
+### 2026-10-26 (v1 complete, lead)
+- Merged PR #4 (v1/05 Part B). Phase 05 done; v1 (classical ML benchmark) complete: 12 experiments, best by val rbf_svm_hog (val 0.9157, test 0.9108), README reproduces everything from a fresh clone.
+- Next: tag `v1.0.0` (when the lead decides), report and slides, then plan capstone Phase 2 in `docs/phases/v2/`.
+
 ### 2026-10-26 (v1/05 Part B review, lead)
 - Audited PR #4: no leakage; error-analysis numbers match the saved predictions. Fixed on the PR branch (D-032): wrong numbers in the write-up (HOG extraction 216 ms not ~30 ms, kNN k=3, recall ranges, error shares, val vs test), simpler error-analysis code, interfaces and figure names synced.
 - Verified: fresh clone, notebooks 01→05 run in ~100 s with 0 errors and every file in `results/` regenerates identically; test_log.csv still 12 rows.
