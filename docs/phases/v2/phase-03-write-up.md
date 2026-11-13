@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | not-started |
+| Status | in-progress |
 | Branch | `phase/v2-03-write-up` |
 | Depends on | Phase v2/02 |
 | PRD features | F-21 |
@@ -12,7 +12,9 @@ The Phase 2 results are written up: a README section, an IEEE LaTeX report and s
 saved results. The release is tagged `v2.0.0`.
 
 ## Previous phase summary
-<!-- Filled at phase start from v2/02's "Phase summary". -->
+From v2/02: every number is in `results/summary_all.csv`, the test JSONs and notebook 07 §7. CNN3 (final) 92.09% /
+macro F1 0.9208 vs `rbf_svm_hog` 91.08% / 0.9108; Shirt recall unchanged (75.1% vs 75.2%); CNN3 ~300× faster and
+~377× smaller. `test_log.csv` has 14 rows; no more test evaluations.
 
 ## In scope — exact features
 1. **README Phase 2 section**: what was built, how to run notebooks 06–07, results table generated from
@@ -35,7 +37,7 @@ saved results. The release is tagged `v2.0.0`.
 - `prd.md` §10, `decisions.md` D-033–D-039, notebook 07's written analysis
 
 ## Tasks
-- [ ] 03.1 — README Phase 2 section → `docs(readme): add Phase 2 CNN results`
+- [x] 03.1 — README Phase 2 section → `docs(readme): add Phase 2 CNN results`
 - [ ] 03.2 — IEEE report in `report/v2/` → `docs(report): Phase 2 report`
 - [ ] 03.3 — slides in `report/v2/` → `docs(report): Phase 2 slides`
 - [ ] 03.4 — final docs check, fill the phase summary; tag `v2.0.0` after merge → `docs(phase-v2-03): close phase`
