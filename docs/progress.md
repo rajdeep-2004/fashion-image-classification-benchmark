@@ -1,6 +1,6 @@
 # Progress
 
-**Current phase:** v2/01 (in progress). **v1 is complete** and tagged `v1.0.0`. v2 (Capstone Phase 2, CNN) is planned.
+**Current phase:** v2/01 (review). **v1 is complete** and tagged `v1.0.0`. v2 (Capstone Phase 2, CNN) is planned.
 **Branch:** phase/v2-01-cnn-training
 **Profile:** lean
 
@@ -17,7 +17,7 @@
 ### v2 — Capstone Phase 2: CNN
 | # | Phase | Status | Branch | Started | Closed |
 |---|---|---|---|---|---|
-| 01 | [CNN Models & Training](phases/v2/phase-01-cnn-training.md) | in-progress | phase/v2-01-cnn-training | 2026-11-14 | |
+| 01 | [CNN Models & Training](phases/v2/phase-01-cnn-training.md) | review | phase/v2-01-cnn-training | 2026-11-14 | |
 | 02 | [CNN Test Evaluation & Comparison](phases/v2/phase-02-evaluation-comparison.md) | not-started | phase/v2-02-evaluation-comparison | | |
 | 03 | [README, Report & Slides](phases/v2/phase-03-write-up.md) | not-started | phase/v2-03-write-up | | |
 
@@ -28,6 +28,11 @@ reviewed by the repo owner (with Claude Code) against the phase file and docs �
 each phase starts. Full workflow: [`AGENTS.md`](../AGENTS.md) §6.
 
 ## Session log
+### 2026-11-14 (v2/01 CNN models & training)
+- Built `src/cnn.py` and notebook 06. CNN2 val 0.9228, CNN3 val 0.9308 (both above `rbf_svm_hog`'s 0.9157); final CNN = CNN3 (D-040), depth gap within run-to-run variation.
+- Found and fixed a reproducibility bug (shared shuffle generator, D-041); a fresh-process retrain now reproduces the val JSON exactly. No test data used; `test_log.csv` still 12 rows.
+- Next: v2/02 (test runs, comparison, error analysis).
+
 ### 2026-11-14 (v2 planning)
 - Tagged `v1.0.0`. Planned v2 (CNN) in this repo, append-only (D-033): PRD §10, architecture §11, system-design §12, interfaces, formats §13–17, AGENTS.md rules 8–11, three v2 phase files, D-034–D-039.
 - Engineering review of the shared code found three ways v2 would have changed Phase 1 outputs (summary.csv rows, best-model pick, misclassified figure names) and a 10k-image memory risk; all fixed in the plan (D-037).
