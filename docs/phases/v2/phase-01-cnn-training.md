@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | not-started |
+| Status | in-progress |
 | Branch | `phase/v2-01-cnn-training` |
 | Depends on | v1 (tag `v1.0.0`) |
 | PRD features | F-15, F-16, F-17, F-18 |
