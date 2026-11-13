@@ -200,5 +200,6 @@ turned into `_`, e.g. `errors_misclassified_shirt_vs_t-shirt_top.png`.
 ## 17. v2: figures
 New stage `cnn`. Notebook 06: `cnn_training_curves.png` (loss and accuracy per epoch, train vs val, both CNNs, best
 epoch marked). Notebook 07: `cnn_recall_vs_classical.png`, `errors_confusion_cnn2_images.png`,
-`errors_confusion_cnn3_images.png`, and `errors_misclassified_{experiment}_{true}_vs_{pred}.png` for the final CNN's
-top confused pairs (via `plot_misclassified(..., tag=experiment)`).
+`errors_confusion_cnn3_images.png`, and `errors_misclassified_{experiment}_{true}_vs_{pred}.png` for
+`cnn3_images` and `rbf_svm_hog` on the pairs Shirt → T-shirt/top, T-shirt/top → Shirt and Shirt → Coat
+(via `plot_misclassified(..., n=8, tag=experiment)`, D-042). Phase 1 figure files are never rewritten.

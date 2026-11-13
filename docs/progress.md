@@ -1,6 +1,6 @@
 # Progress
 
-**Current phase:** v2/02 (in progress). v2/01 done. **v1 is complete** and tagged `v1.0.0`. v2 (Capstone Phase 2, CNN) is planned.
+**Current phase:** v2/02 (review). v2/01 done. **v1 is complete** and tagged `v1.0.0`. v2 (Capstone Phase 2, CNN) is planned.
 **Branch:** phase/v2-02-evaluation-comparison
 **Profile:** lean
 
@@ -18,7 +18,7 @@
 | # | Phase | Status | Branch | Started | Closed |
 |---|---|---|---|---|---|
 | 01 | [CNN Models & Training](phases/v2/phase-01-cnn-training.md) | done | phase/v2-01-cnn-training | 2026-11-14 | 2026-11-14 |
-| 02 | [CNN Test Evaluation & Comparison](phases/v2/phase-02-evaluation-comparison.md) | in-progress | phase/v2-02-evaluation-comparison | 2026-11-14 | |
+| 02 | [CNN Test Evaluation & Comparison](phases/v2/phase-02-evaluation-comparison.md) | review | phase/v2-02-evaluation-comparison | 2026-11-14 | |
 | 03 | [README, Report & Slides](phases/v2/phase-03-write-up.md) | not-started | phase/v2-03-write-up | | |
 
 Status values: `not-started` → `in-progress` → `review` → `done`
@@ -28,6 +28,11 @@ reviewed by the repo owner (with Claude Code) against the phase file and docs �
 each phase starts. Full workflow: [`AGENTS.md`](../AGENTS.md) §6.
 
 ## Session log
+### 2026-11-14 (v2/02 CNN test evaluation & comparison)
+- One test run per CNN: CNN3 92.09% (final), CNN2 91.85%, vs `rbf_svm_hog` 91.08%. `test_log.csv` 14 rows; `summary_all.csv` 14 rows; Phase 1 outputs unchanged (notebook 05 re-run byte-identical).
+- Notebook 07: Shirt recall not improved (75.1% vs 75.2%, a swap of ~90 images each way); gains on other tops; CNN3 ~300× faster and ~377× smaller than the SVM. D-042.
+- Next: v2/03 (README, report, slides).
+
 ### 2026-11-14 (v2/01 CNN models & training)
 - Built `src/cnn.py` and notebook 06. CNN2 val 0.9228, CNN3 val 0.9308 (both above `rbf_svm_hog`'s 0.9157); final CNN = CNN3 (D-040), depth gap within run-to-run variation.
 - Found and fixed a reproducibility bug (shared shuffle generator, D-041); a fresh-process retrain now reproduces the val JSON exactly. No test data used; `test_log.csv` still 12 rows.
