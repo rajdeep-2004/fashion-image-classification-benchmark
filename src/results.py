@@ -309,7 +309,7 @@ def plot_recall_comparison(experiments: list) -> plt.Figure:
     ax.set_ylim(50, 100)
     ax.set_title("Per-class test recall: CNN vs classical models")
     ax.grid(True, axis="y", linestyle="--", alpha=0.5)
-    ax.legend(loc="lower left")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=len(experiments), frameon=False)
     fig.tight_layout()
     utils.save_fig(fig, "cnn_recall_vs_classical")
     return fig
