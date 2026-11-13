@@ -56,6 +56,7 @@ Rules:
 | D-040 | 2026-11-14 | v2/01 | Final CNN is CNN3 (val 0.9308 vs 0.9228); depth comparison inconclusive | Active |
 | D-041 | 2026-11-14 | v2/01 | train_cnn seeds and builds its own model and loaders (reproducibility fix) | Active |
 | D-042 | 2026-11-14 | v2/02 | CNN vs classical comparison: models, example pairs and end-to-end time | Active |
+| D-043 | 2026-11-14 | v2/03 | t-SNE figure not byte-identical after adding PyTorch; committed figure kept | Active |
 
 ---
 
@@ -2010,3 +2011,44 @@ first-in-order images avoid cherry-picking (D-032).
 
 **Revisit if**
 A model is added whose features cost more time than its prediction, or the report needs one-model-only error grids.
+
+### D-043 — t-SNE figure not byte-identical after adding PyTorch; committed figure kept
+- **Date:** 2026-11-14
+- **Phase:** v2/03 — README, Report & Slides
+- **Status:** Active
+- **Type:** edge-case
+
+**Context**
+The final check ran all seven notebooks on a fresh clone. Every result file came out byte-identical except
+`results/figures/eda_tsne.png` from notebook 01. Running notebook 01 at tag `v1.0.0` (before any Phase 2 code) in the
+same environment gives the same changed file, so the cause is the environment, not Phase 2's code. All pinned package
+versions are unchanged; installing `torch==2.15.0` added PyTorch's own OpenMP runtime (`libomp.dylib`).
+
+**Decision**
+Keep the committed Phase 1 figure. Document in the README that this one figure may differ slightly when regenerated.
+
+**Alternatives considered**
+| Option | Why not chosen |
+|---|---|
+| Commit the regenerated figure | Changes a Phase 1 output for no gain; the v1 report shows the committed version |
+| Force t-SNE to one thread | Edits Phase 1's notebook 01, which Phase 2 must not change; the figure would still differ from the committed one |
+
+**Why**
+The figure is exploratory only: no number, choice or result depends on it, and the regenerated picture shows the same
+clusters in the same places, with individual points shifted slightly (about 10% of pixels differ).
+
+**How it works**
+scikit-learn's Barnes–Hut t-SNE sums gradient contributions in parallel threads. Floating-point addition is not
+associative, so a different threading runtime can change the order of additions and therefore the low-order bits; over
+1,000 optimisation steps these tiny differences move individual points. Seeding fixes the starting point, not the
+summation order.
+
+**Files touched**
+- `README.md` (section 4), `docs/decisions.md`
+
+**Concepts worth learning**
+- **Floating-point non-associativity:** (a + b) + c can differ from a + (b + c) in the last bits.
+- **Bitwise vs. statistical reproducibility:** a result can be the same in substance without being the same bytes.
+
+**Revisit if**
+A reported number (not an exploratory figure) ever changes between runs.
