@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | review |
+| Status | done |
 | Branch | `phase/v2-02-evaluation-comparison` |
 | Depends on | Phase v2/01 |
 | PRD features | F-19, F-20 |
