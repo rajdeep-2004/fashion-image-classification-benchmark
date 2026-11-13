@@ -53,6 +53,8 @@ Rules:
 | D-037 | 2026-11-14 | v2 | Scoring a CNN with the unchanged evaluate(); Phase 1 outputs protected in results.py | Active |
 | D-038 | 2026-11-14 | v2 | Checkpoints gitignored; training history committed; notebook re-run guards | Active |
 | D-039 | 2026-11-14 | v2 | Add PyTorch (torch==2.15.0, CPU) as the only new dependency | Active |
+| D-040 | 2026-11-14 | v2/01 | Final CNN is CNN3 (val 0.9308 vs 0.9228); depth comparison inconclusive | Active |
+| D-041 | 2026-11-14 | v2/01 | train_cnn seeds and builds its own model and loaders (reproducibility fix) | Active |
 
 ---
 
@@ -1858,3 +1860,103 @@ One dependency, pinned like the others, and no second data-loading path that cou
 
 **Revisit if**
 `torch==2.15.0` has no wheel for the Python version in use.
+
+### D-040 — Final CNN is CNN3 (val 0.9308 vs 0.9228); depth comparison inconclusive
+- **Date:** 2026-11-14
+- **Phase:** v2/01 — CNN Models & Training
+- **Status:** Active
+- **Type:** algorithm
+
+**Context**
+CNN2 and CNN3 were trained with identical settings and seed (D-034, D-036, D-041). D-035 fixed the rule before
+training: the final CNN is the one with the higher validation accuracy, ties going to fewer parameters. No test data
+was used.
+
+**Decision**
+The final CNN is **CNN3** (val accuracy 0.9308, macro F1 0.9308) over CNN2 (0.9228, 0.9223). The write-up reports
+the depth comparison as inconclusive, because run-to-run variation is about as large as the gap (see How it works).
+
+**Alternatives considered**
+| Option | Why not chosen |
+|---|---|
+| Call CNN3 "better" because it wins by 0.8 points | An earlier CNN2 run with a different batch order reached 0.9320; the gap is within that variation |
+| Train each CNN with several seeds and average | Would settle whether the gap is real, but multiplies training time; not required by the brief |
+
+**Why**
+Following the rule fixed in advance keeps the choice free of hindsight; reporting the variation honestly keeps the
+claim no stronger than the evidence.
+
+**How it works**
+| | CNN2 | CNN3 |
+|---|---|---|
+| Parameters | 421,642 | 241,546 |
+| Best epoch / epochs run | 9 / 14 | 12 / 17 |
+| Best val loss | 0.1976 | 0.1926 |
+| Val accuracy / macro F1 | 0.9228 / 0.9223 | 0.9308 / 0.9308 |
+| Train accuracy at best epoch | 0.9205 | 0.9354 |
+| Training time (CPU, 4 threads) | 198 s | 416 s |
+1. Both are above the best classical model on the same validation set (`rbf_svm_hog`, 0.9157, D-029).
+2. The CNN2 run discarded in D-041 (same code and settings, only a different batch order) reached 0.9320 at epoch 17.
+   So one CNN2 can land anywhere from about 0.923 to 0.932 depending on batch order, which covers CNN3's 0.9308.
+3. Early stopping uses validation loss. CNN2's lowest loss was at epoch 9, though its accuracy kept rising to 0.9297
+   by epoch 14; the kept weights are the epoch-9 ones.
+4. After the best epoch CNN3's training loss kept falling (0.175 → 0.127) while validation loss rose (0.193 → 0.208):
+   overfitting, which early stopping cut off.
+
+**Files touched**
+- `notebooks/06_cnn_training.ipynb`, `results/metrics/cnn2_images_val.json`, `results/metrics/cnn3_images_val.json`,
+  `results/training/cnn{2,3}_images_history.csv`, `results/figures/cnn_training_curves.png`
+
+**Concepts worth learning**
+- **Pre-registered selection rule:** deciding how to choose before seeing the results, so the choice cannot be bent.
+- **Run-to-run variance:** the same network trained with a different random batch order ends at a slightly different
+  score; differences smaller than that variance are not evidence.
+- **Loss vs accuracy:** loss also rewards confidence in the right answer, so it can rise while accuracy still improves.
+
+**Revisit if**
+The two CNNs' test accuracies differ in the opposite direction by more than ~1 point (worth discussing in the report).
+
+### D-041 — train_cnn seeds and builds its own model and loaders (reproducibility fix)
+- **Date:** 2026-11-14
+- **Phase:** v2/01 — CNN Models & Training
+- **Status:** Active
+- **Type:** edge-case
+
+**Context**
+D-036 promised identical numbers on every run. A check that retrained CNN2 in a fresh process got a different result
+(val 0.9228 at epoch 9 instead of 0.9320 at epoch 17). The cause: `train_cnn(name, model, loaders)` received a
+DataLoader whose shuffle generator had already been used. In the notebook, previewing one batch advanced it, and
+CNN2's 22 epochs advanced it again before CNN3 trained. The batch order, and so the result, depended on what ran
+earlier. A small two-run check had passed only because both runs started from fresh loaders.
+
+**Decision**
+Change the interface to `train_cnn(name, make_model)`: the function seeds everything, builds the model and builds fresh
+loaders itself. Both CNNs were retrained with the fixed code; the earlier numbers were discarded. No test data was
+involved at any point.
+
+**Alternatives considered**
+| Option | Why not chosen |
+|---|---|
+| Reset the generator inside `train_cnn` | Modifies an object the caller passed in; the model's starting weights would still depend on the caller seeding first |
+| Rely on the notebook calling `set_seed()` and `make_loaders()` right before each run | A convention that is easy to break, which is exactly what happened |
+
+**Why**
+Put the guard in the one function every training run goes through, so no caller can get it wrong.
+
+**How it works**
+1. `train_cnn` calls `set_seed(42)`, then `make_model()` (starting weights depend only on the seed), then
+   `make_loaders()` (a new shuffle generator seeded with 42).
+2. Dropout masks come from PyTorch's global generator, which was just seeded, so they repeat too.
+3. Verified by retraining CNN2 in a separate process after deliberately using the random generator first: identical
+   best epoch (9), epochs run (14), val loss (0.1976), val accuracy (0.9228) and macro F1 (0.9223).
+
+**Files touched**
+- `src/cnn.py` (`train_cnn`), `notebooks/06_cnn_training.ipynb`, `docs/module-interfaces.md`, `docs/system-design.md`
+
+**Concepts worth learning**
+- **Random generator state:** a seeded generator gives the same sequence only if it is used the same way from the
+  start; any earlier draw shifts everything after it.
+- **Hidden shared state:** an object passed between steps can carry changes nobody sees.
+
+**Revisit if**
+A new source of randomness is added to training (e.g. data augmentation).

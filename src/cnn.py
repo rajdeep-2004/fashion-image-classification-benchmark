@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from src import config
 from src.data import load_splits
-from src.utils import display_path, save_json
+from src.utils import display_path, save_json, set_seed
 
 
 def _use_cpu_threads() -> None:
@@ -138,14 +138,18 @@ def _run_epoch(model: nn.Module, loader: DataLoader, loss_fn, optimizer=None):
     return total_loss / n, correct / n, torch.cat(preds).numpy()
 
 
-def train_cnn(name: str, model: nn.Module, loaders: dict) -> dict:
+def train_cnn(name: str, make_model) -> dict:
     """Train on the 54k train split, stop when val loss hasn't improved for CNN_PATIENCE epochs, restore the best weights.
 
-    Writes the checkpoint, the per-epoch history CSV and the val JSON (data-formats.md §13-15); returns the val summary.
-    Call utils.set_seed() before building `model` so its starting weights are the same on every run.
+    `make_model` is the class (CNN2 or CNN3). The seed, the starting weights and fresh loaders are all created here, so
+    the run is identical no matter what ran before it (D-041). Writes the checkpoint, the per-epoch history CSV and the
+    val JSON (data-formats.md §13-15); returns the val summary.
     """
     _use_cpu_threads()
     torch.use_deterministic_algorithms(True)
+    set_seed()
+    model = make_model()          # starting weights depend only on the seed
+    loaders = make_loaders()      # fresh shuffle generator: same batch order on every run
     loss_fn = nn.CrossEntropyLoss()  # softmax + negative log-likelihood
     optimizer = torch.optim.Adam(model.parameters(), lr=config.CNN_LR)
     history, best_loss, best_state, epochs_without_gain = [], float("inf"), None, 0

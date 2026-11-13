@@ -1,0 +1,25 @@
+{
+ "experiment": "cnn2_images",
+ "model": "cnn2",
+ "features": "images",
+ "split": "val",
+ "settings": {
+  "batch_size": 64,
+  "lr": 0.001,
+  "max_epochs": 30,
+  "patience": 5,
+  "dropout": 0.5,
+  "optimizer": "adam"
+ },
+ "best_epoch": 9,
+ "epochs_run": 14,
+ "best_val_loss": 0.1976,
+ "best_val_acc": 0.9228,
+ "val_macro_f1": 0.9223,
+ "train_acc_at_best": 0.9205,
+ "param_count": 421642,
+ "train_time_s": 198.22,
+ "device": "cpu",
+ "torch": "2.15.0",
+ "timestamp": "2026-11-14T04:10:50"
+}
