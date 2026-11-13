@@ -43,7 +43,7 @@ not been used: `test_log.csv` has 12 rows.
 - `decisions.md` → D-035, D-037, D-038
 
 ## Tasks
-- [ ] 02.1 — `evaluate.py` and `results.py` additions; check notebook 05 output unchanged → `feat(results): support CNN experiments without changing Phase 1 outputs`
+- [x] 02.1 — `evaluate.py` and `results.py` additions; check notebook 05 output unchanged → `feat(results): support CNN experiments without changing Phase 1 outputs`
 - [ ] 02.2 — `final_test_run_cnn()` in `experiment.py` → `feat(experiment): single test run for CNNs`
 - [ ] 02.3 — notebook 06 test cells; run once per CNN; build `summary_all.csv` → `feat(cnn): test evaluation of CNN2 and CNN3`
 - [ ] 02.4 — `notebooks/07_cnn_vs_classical.ipynb`: comparison, error analysis, RQ5–RQ8 → `feat(analysis): CNN vs classical comparison and error analysis`

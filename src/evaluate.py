@@ -11,6 +11,7 @@ from datetime import datetime
 
 import numpy as np
 import sklearn
+import torch
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_recall_fscore_support
 
 from src import config
@@ -27,7 +28,10 @@ def model_size_bytes(model) -> int:
 
 
 def model_size_detail(model) -> dict:
-    """The model-specific size measure, for the write-up (support vectors, tree nodes, stored samples, coefficients)."""
+    """The model-specific size measure, for the write-up (support vectors, tree nodes, stored samples, coefficients,
+    or trainable parameters for a CNN wrapped in CNNPredictor, D-037)."""
+    if isinstance(getattr(model, "model", None), torch.nn.Module):
+        return {"type": "parameters", "value": int(sum(p.numel() for p in model.model.parameters() if p.requires_grad))}
     est = model.steps[-1][1] if hasattr(model, "steps") else model  # last step of a Pipeline
     if hasattr(est, "n_support_"):
         return {"type": "support_vectors", "value": int(est.n_support_.sum())}
@@ -57,7 +61,7 @@ def _cpu_name() -> str:
 
 
 def environment() -> dict:
-    return {"python": platform.python_version(), "sklearn": sklearn.__version__,
+    return {"python": platform.python_version(), "sklearn": sklearn.__version__, "torch": torch.__version__,
             "cpu": _cpu_name(), "n_jobs": config.N_JOBS}
 
 

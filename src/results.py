@@ -13,8 +13,9 @@ import matplotlib.pyplot as plt
 from src import config, utils
 from src.data import load_splits
 
-MODEL_ORDER = ["dummy", "logreg", "knn", "rf", "linear_svm", "rbf_svm"]
-FEATURE_ORDER = ["pixels", "hog"]
+V1_MODELS = ["dummy", "logreg", "knn", "rf", "linear_svm", "rbf_svm"]  # Phase 1: the default everywhere (D-037)
+MODEL_ORDER = V1_MODELS + ["cnn2", "cnn3"]
+FEATURE_ORDER = ["pixels", "hog", "images"]
 RECALL_COLS = [f"recall_c{i}" for i in range(config.NUM_CLASSES)]
 
 
@@ -26,11 +27,20 @@ def _read_json(path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def load_all_metrics(split: str = "test") -> list[dict]:
-    """Read every results/metrics/*_{split}.json ('val', 'test' or 'cv'), sorted by file name."""
+def _model_of(result: dict) -> str:
+    """Model name of a saved result; CV files have no 'model' key, so take it from the experiment id."""
+    return result.get("model") or result["experiment"].rsplit("_", 1)[0]
+
+
+def load_all_metrics(split: str = "test", models: list = V1_MODELS) -> list[dict]:
+    """Read every results/metrics/*_{split}.json ('val', 'test' or 'cv') of the given models, sorted by file name.
+
+    The default is the Phase 1 models only, so Phase 1 outputs never change when CNN results are added (D-037).
+    """
     if split not in ("val", "test", "cv"):
         raise ValueError(f"split must be 'val', 'test' or 'cv', got {split!r}")
-    return [_read_json(p) for p in sorted(config.METRICS_DIR.glob(f"*_{split}.json"))]
+    results = [_read_json(p) for p in sorted(config.METRICS_DIR.glob(f"*_{split}.json"))]
+    return [r for r in results if _model_of(r) in models]
 
 
 def comparable_val_acc(experiment: str) -> float:
@@ -44,20 +54,21 @@ def comparable_val_acc(experiment: str) -> float:
     return float(_read_json(config.METRICS_DIR / f"{experiment}_val.json")["best_val_acc"])
 
 
-def pick_best_experiment() -> str:
+def pick_best_experiment(models: list = V1_MODELS) -> str:
     """The experiment with the highest comparable val accuracy. Test scores play no part (D-005, D-029)."""
-    experiments = [d["experiment"] for d in load_all_metrics("val")]
+    experiments = [d["experiment"] for d in load_all_metrics("val", models)]
     if not experiments:
         raise RuntimeError("No *_val.json files in results/metrics/: run notebooks 03 and 04 first.")
     return max(experiments, key=comparable_val_acc)  # max() keeps the first of equal scores
 
 
-def build_summary() -> pd.DataFrame:
-    """One row per *_test.json with the data-formats.md §11 columns; writes results/summary.csv.
+def build_summary(models: list = V1_MODELS, filename: str = "summary.csv") -> pd.DataFrame:
+    """One row per *_test.json of the given models with the data-formats.md §11 columns; writes results/{filename}.
 
+    Default: Phase 1 models -> summary.csv. Phase 2: build_summary(MODEL_ORDER, "summary_all.csv") (D-037).
     When timing_comparable is false (the two LR runs, D-024), both timing columns are NaN, never zero.
     """
-    test_metrics = load_all_metrics("test")
+    test_metrics = load_all_metrics("test", models)
     if not test_metrics:
         raise RuntimeError("No *_test.json files in results/metrics/: run notebooks 03 and 04 first.")
 
@@ -78,7 +89,7 @@ def build_summary() -> pd.DataFrame:
     df = pd.DataFrame(rows)
     df = df.sort_values(["model", "features"], key=lambda col: col.map(
         lambda v: (MODEL_ORDER + FEATURE_ORDER).index(v))).reset_index(drop=True)
-    path = config.RESULTS_DIR / "summary.csv"
+    path = config.RESULTS_DIR / filename
     df.to_csv(path, index=False)
     print(f"saved {utils.display_path(path)} ({len(df)} experiments)")
     return df
@@ -227,10 +238,11 @@ def top_confused_pairs(experiment: str, k: int = 5) -> pd.DataFrame:
     return pd.DataFrame(rows).sort_values("count", ascending=False, kind="stable").head(k).reset_index(drop=True)
 
 
-def plot_misclassified(experiment: str, true_c, pred_c, n: int = 16) -> plt.Figure:
+def plot_misclassified(experiment: str, true_c, pred_c, n: int = 16, tag: str = "") -> plt.Figure:
     """Grid of the first n test images (in test order, not hand-picked) of class true_c predicted as pred_c.
 
-    Classes can be indices or names. Saves errors_misclassified_{true}_vs_{pred}.png.
+    Classes can be indices or names. Saves errors_misclassified_{true}_vs_{pred}.png, or
+    errors_misclassified_{tag}_{true}_vs_{pred}.png when a tag is given (Phase 2 uses the experiment id, D-037).
     """
     true_c, pred_c = _class_index(true_c), _class_index(pred_c)
     y_pred = np.asarray(_saved_test(experiment)["y_pred"])
@@ -254,7 +266,8 @@ def plot_misclassified(experiment: str, true_c, pred_c, n: int = 16) -> plt.Figu
                  f"({experiment}, showing {len(shown)} of {len(matches)})", fontsize=12, y=1.02)
     fig.tight_layout()
     slug = lambda name: name.lower().replace("/", "_").replace(" ", "_")
-    utils.save_fig(fig, f"errors_misclassified_{slug(true_name)}_vs_{slug(pred_name)}")
+    prefix = f"errors_misclassified_{tag}_" if tag else "errors_misclassified_"
+    utils.save_fig(fig, f"{prefix}{slug(true_name)}_vs_{slug(pred_name)}")
     return fig
 
 
@@ -277,3 +290,26 @@ def model_agreement(exp_a: str, exp_b: str) -> dict:
         "total": len(y_test),
         "agreement_pct": round(float(np.mean(pred_a == pred_b) * 100), 2),
     }
+
+
+# --- 4. Phase 2: CNN vs classical models (D-037) ---------------------------------------
+
+def plot_recall_comparison(experiments: list) -> plt.Figure:
+    """Grouped bars of per-class test recall for the given experiments. Saves cnn_recall_vs_classical.png."""
+    recalls = {exp: _saved_test(exp)["per_class_recall"] for exp in experiments}
+    x = np.arange(config.NUM_CLASSES)
+    width = 0.8 / len(experiments)
+    fig, ax = plt.subplots(figsize=(12, 5))
+    for i, (exp, rec) in enumerate(recalls.items()):
+        ax.bar(x + (i - (len(experiments) - 1) / 2) * width, np.asarray(rec) * 100, width, label=exp,
+               edgecolor="black", linewidth=0.5)
+    ax.set_xticks(x)
+    ax.set_xticklabels(config.CLASS_NAMES, rotation=30, ha="right")
+    ax.set_ylabel("Test recall (%)")
+    ax.set_ylim(50, 100)
+    ax.set_title("Per-class test recall: CNN vs classical models")
+    ax.grid(True, axis="y", linestyle="--", alpha=0.5)
+    ax.legend(loc="lower left")
+    fig.tight_layout()
+    utils.save_fig(fig, "cnn_recall_vs_classical")
+    return fig
