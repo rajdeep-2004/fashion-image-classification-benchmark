@@ -1,7 +1,7 @@
 # Progress
 
-**Current phase:** v2/02 (not started). v2/01 done. **v1 is complete** and tagged `v1.0.0`. v2 (Capstone Phase 2, CNN) is planned.
-**Branch:** —
+**Current phase:** v2/02 (in progress). v2/01 done. **v1 is complete** and tagged `v1.0.0`. v2 (Capstone Phase 2, CNN) is planned.
+**Branch:** phase/v2-02-evaluation-comparison
 **Profile:** lean
 
 ## Phases
@@ -18,7 +18,7 @@
 | # | Phase | Status | Branch | Started | Closed |
 |---|---|---|---|---|---|
 | 01 | [CNN Models & Training](phases/v2/phase-01-cnn-training.md) | done | phase/v2-01-cnn-training | 2026-11-14 | 2026-11-14 |
-| 02 | [CNN Test Evaluation & Comparison](phases/v2/phase-02-evaluation-comparison.md) | not-started | phase/v2-02-evaluation-comparison | | |
+| 02 | [CNN Test Evaluation & Comparison](phases/v2/phase-02-evaluation-comparison.md) | in-progress | phase/v2-02-evaluation-comparison | 2026-11-14 | |
 | 03 | [README, Report & Slides](phases/v2/phase-03-write-up.md) | not-started | phase/v2-03-write-up | | |
 
 Status values: `not-started` → `in-progress` → `review` → `done`

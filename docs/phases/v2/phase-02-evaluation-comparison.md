@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | not-started |
+| Status | in-progress |
 | Branch | `phase/v2-02-evaluation-comparison` |
 | Depends on | Phase v2/01 |
 | PRD features | F-19, F-20 |
@@ -12,7 +12,11 @@ Each CNN is scored once on the test set by the shared `evaluate()`, the all-mode
 Phase 1 file, and notebook 07 compares the CNN with the best classical model and answers RQ5–RQ8.
 
 ## Previous phase summary
-<!-- Filled at phase start from v2/01's "Phase summary". -->
+From v2/01: `src/cnn.py` provides `CNN2`, `CNN3`, `CNNPredictor` and `train_cnn(name, make_model)` (seeds, builds
+the model and loaders itself, D-041). Val results: CNN2 0.9228, CNN3 0.9308, both above `rbf_svm_hog`'s 0.9157;
+**final CNN = CNN3** (D-040), the depth gap is within run-to-run variation. Checkpoints `models/cnn{2,3}_images_best.pt`
+are gitignored; to rebuild one, delete the CNN's val JSON and re-run notebook 06 (identical numbers). The test set has
+not been used: `test_log.csv` has 12 rows.
 
 ## In scope — exact features
 1. **Harness additions** (D-037): `model_size_detail` "parameters" case, PyTorch version in `environment()`;
