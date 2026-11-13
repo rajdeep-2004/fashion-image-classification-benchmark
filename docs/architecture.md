@@ -42,7 +42,7 @@ fashion-image-classification-benchmark/
 ├── AGENTS.md                  # rules for every contributor and AI tool
 ├── CONTRIBUTING.md            # step-by-step contributor workflow
 ├── CLAUDE.md                  # project instructions for Claude Code (includes AGENTS.md)
-├── idea.md                    # early brainstorming (not instructions; docs/ wins)
+├── docs/ideas/                # early brainstorming idea-v1/v2 (not instructions; docs/ wins)
 ├── requirements.txt           # pinned top-level deps
 ├── .github/pull_request_template.md
 ├── src/                       # ALL reusable logic. No plotting-only code, no notebooks.

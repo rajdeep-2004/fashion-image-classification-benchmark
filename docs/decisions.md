@@ -46,6 +46,7 @@ Rules:
 | D-030 | 2026-10-25 | v1/05 | Phase 05 aggregation: validation-selected model ranking and non-comparable timing rules | Active |
 | D-031 | 2026-10-26 | v1/05 | Phase 05 split between two owners and two PRs | Active |
 | D-032 | 2026-10-26 | v1/05 | Error analysis from saved predictions; end-to-end speed counts HOG extraction | Active |
+| D-033 | 2026-11-14 | v2 | Phase 2 (CNN) is built in this repository as v2, append-only | Active |
 
 ---
 
@@ -1541,3 +1542,53 @@ End-to-end time is what a user of the model would actually wait for.
 
 **Revisit if**
 Timings are re-measured on one machine, or Phase 2 adds a model whose features cost more than its prediction.
+
+### D-033 — Phase 2 (CNN) is built in this repository as v2, append-only
+- **Date:** 2026-11-14
+- **Phase:** v2 — planning
+- **Status:** Active
+- **Type:** architecture
+
+**Context**
+Capstone Phase 2 trains a small CNN on Fashion-MNIST and compares it with the Phase 1 classical models. The core research
+question is a comparison, so the CNN must be scored on the same split, the same test set and the same `evaluate()` as the
+classical models, and both families should end up in one results table. Phase 1 is finished and must not change.
+
+**Decision**
+Phase 2 is added to this repository as release v2. Phase 1 is frozen at git tag `v1.0.0`; v2 only adds files (new
+`src/` code, notebooks 06+, new result files and rows, v2 doc sections, `docs/phases/v2/`, `report/v2/`).
+
+**Alternatives considered**
+| Option | Why not chosen |
+|---|---|
+| Move Phase 1 into a `phase1/` folder and start a `phase2/` folder | Breaks the `src` imports in notebooks 01–05, the paths in `config.py`, the README run steps and the "fresh clone reproduces every result" property; the two model families would sit in separate result tables |
+| A separate repository for Phase 2 | The Phase 1 split, data loader, `evaluate()` and saved predictions would have to be copied in to compare fairly; two copies can drift apart |
+
+**Why**
+Everything the comparison needs (`load_splits()`, the split file, `evaluate()`, `final_test_run()`, `summary.csv`,
+`test_log.csv`, the error-analysis functions) already lives here. Appending reuses it unchanged, and the tag gives an
+exact, citable snapshot of Phase 1.
+
+**How it works**
+1. `git tag v1.0.0` marks the last Phase 1 commit. `git checkout v1.0.0` always shows Phase 1 exactly as submitted.
+2. Phase 2 code and notebooks are new files; shared modules only get small, backward-compatible additions, each logged
+   as its own decision.
+3. CNN experiments are added as new rows to `results/summary.csv` and `results/test_log.csv`; Phase 1's 12 rows stay
+   byte-identical.
+4. The Phase 2 report and slides go in `report/v2/`; the Phase 1 report stays in `report/`.
+5. Early brainstorming notes moved from the repo root to `docs/ideas/` (`idea-v1.md`, `idea-v2.md`). They are background,
+   not instructions; `docs/` wins where they differ.
+
+**Files touched**
+- `docs/ideas/idea-v1.md` (moved from `idea.md`), `docs/ideas/idea-v2.md` (new): brainstorming notes
+- `docs/designs/v2-cnn-phase.md` (new): Phase 2 scope and layout
+- `AGENTS.md`, `README.md`, `docs/architecture.md`: point to the new location of the idea notes
+- `docs/decisions.md`: this entry
+
+**Concepts worth learning**
+- **Git tag:** a fixed name for one commit, used to mark a release (`v1.0.0`) that can always be checked out again.
+- **Append-only change:** new work adds files instead of editing finished ones, so earlier results stay reproducible.
+- **Fair comparison:** two models are only comparable when they see the same data split and are scored by the same code.
+
+**Revisit if**
+Phase 2 needs a change to a Phase 1 result file, the split or the seed (that would need its own decision and a re-run note).

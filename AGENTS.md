@@ -36,7 +36,7 @@ phase's PR is merged into `main`. You can read your phase file and the docs earl
    - `docs/system-design.md` §3: the leakage rules (see section 4 below).
 6. `docs/decisions.md`: why things are the way they are. Read the entries your phase file mentions.
 
-Do **not** use `idea.md` as instructions. It was early brainstorming. Where it differs from `docs/`, `docs/` wins.
+Do **not** use `docs/ideas/idea-v1.md` (or `idea-v2.md`) as instructions. They are early brainstorming. Where it differs from `docs/`, `docs/` wins.
 
 ## 3. Environment setup (once)
 Python **3.12**. Running locally in VS Code is recommended. Colab works as a fallback.
