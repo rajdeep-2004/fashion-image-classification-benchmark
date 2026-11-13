@@ -4,14 +4,16 @@ import random
 import time
 
 import numpy as np
+import torch
 
 from src import config
 
 
 def set_seed(seed: int = config.SEED) -> None:
-    """Seed Python's and NumPy's random generators so runs are repeatable."""
+    """Seed Python's, NumPy's and PyTorch's random generators so runs are repeatable."""
     random.seed(seed)
     np.random.seed(seed)
+    torch.manual_seed(seed)
 
 
 class Timer:

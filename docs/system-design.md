@@ -138,7 +138,7 @@ If they get too slow, the mitigation is the documented subset, or PCA-reduced pi
 
 ### Flow E: Train, choose and test a CNN (notebook 06)
 1. `make_loaders()` calls `load_splits()`, keeps train (54k, shuffled with a seeded generator) and val (6k), drops test.
-2. `train_cnn("cnn2", CNN2(), loaders)`: per epoch, train on all batches, then score val with dropout off; keep the
+2. `train_cnn("cnn2", CNN2)`: seed, build the model and fresh loaders; per epoch, train on all batches, then score val with dropout off; keep the
    weights with the lowest val loss; stop after 5 epochs without improvement; restore the best weights; write
    `models/cnn2_images_best.pt`, `results/training/cnn2_images_history.csv`, `results/metrics/cnn2_images_val.json`.
 3. Same for CNN3. Compare val accuracies; record the final CNN (D-035).

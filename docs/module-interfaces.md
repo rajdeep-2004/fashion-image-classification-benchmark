@@ -18,7 +18,7 @@ Modules read these at call time (`config.X` inside functions), so a scratch chec
 ## `src/utils.py`
 | Function | Takes | Returns | Notes |
 |---|---|---|---|
-| `set_seed(seed=SEED)` | int | None | Seeds `random` and `numpy` |
+| `set_seed(seed=SEED)` | int | None | Seeds `random`, `numpy` and `torch` |
 | `Timer(label)` | str | context manager with `.seconds` | `with Timer("fit") as t: ...` prints `fit: 12.3s` |
 | `save_fig(fig, name)` | matplotlib Figure, filename without extension | `Path` | Saves `FIGURES_DIR/{name}.png` at 300 dpi, creating the folder if needed |
 | `save_json(obj, path)` | dict, `Path` | None | Writes indented JSON, converting NumPy numbers/arrays; creates the folder |
@@ -115,7 +115,8 @@ metrics = final_test_run("knn", make_knn, best, kind="hog")
 | `CNN2()`, `CNN3()` | — | `nn.Module` | Layers in D-034; dropout `CNN_DROPOUT` |
 | `count_params(model)` | `nn.Module` | int | Trainable parameters: 421,642 (CNN2), 241,546 (CNN3) |
 | `CNNPredictor(model)` | trained `nn.Module` | object with `.predict(X)` and `.model` | `predict` takes (N, 28, 28) float32, returns int64 class indices; `eval()` + `no_grad()`, batches of `CNN_PREDICT_BATCH` |
-| `train_cnn(name, model, loaders)` | `"cnn2"`/`"cnn3"`, fresh model, `make_loaders()` output | val summary dict (`data-formats.md` §13) | Adam + cross-entropy, early stopping on val loss, restores best weights in `model`. Writes `models/{name}_images_best.pt`, `results/training/{name}_images_history.csv`, `results/metrics/{name}_images_val.json` |
+| `training_settings()` | — | dict | The fixed settings (batch size, lr, max epochs, patience, dropout, optimizer) stored in the val and test JSONs |
+| `train_cnn(name, make_model)` | `"cnn2"`/`"cnn3"`, the class `CNN2`/`CNN3` | val summary dict (`data-formats.md` §13) | Seeds, builds the model and fresh loaders itself (D-041), then Adam + cross-entropy, early stopping on val loss, best weights restored. Writes `models/{name}_images_best.pt`, `results/training/{name}_images_history.csv`, `results/metrics/{name}_images_val.json` |
 
 ### `src/experiment.py`
 | Function | Takes | Returns | Side effects |

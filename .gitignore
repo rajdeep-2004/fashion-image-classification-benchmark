@@ -7,6 +7,8 @@
 # big files rebuilt by code (see docs/decisions.md D-009)
 data/raw/
 features/
+# CNN checkpoints, rebuilt by notebook 06 (D-038)
+models/
 
 # python / jupyter / OS clutter
 __pycache__/
