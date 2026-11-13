@@ -55,6 +55,7 @@ Rules:
 | D-039 | 2026-11-14 | v2 | Add PyTorch (torch==2.15.0, CPU) as the only new dependency | Active |
 | D-040 | 2026-11-14 | v2/01 | Final CNN is CNN3 (val 0.9308 vs 0.9228); depth comparison inconclusive | Active |
 | D-041 | 2026-11-14 | v2/01 | train_cnn seeds and builds its own model and loaders (reproducibility fix) | Active |
+| D-042 | 2026-11-14 | v2/02 | CNN vs classical comparison: models, example pairs and end-to-end time | Active |
 
 ---
 
@@ -1960,3 +1961,52 @@ Put the guard in the one function every training run goes through, so no caller 
 
 **Revisit if**
 A new source of randomness is added to training (e.g. data augmentation).
+
+### D-042 — CNN vs classical comparison: models, example pairs and end-to-end time
+- **Date:** 2026-11-14
+- **Phase:** v2/02 — CNN Test Evaluation & Comparison
+- **Status:** Active
+- **Type:** algorithm
+
+**Context**
+The brief asks for "AML versus CNN confusion examples and a concise error analysis". Choices had to be made about
+which classical models to compare against, which class pairs to show, and how to compare speed fairly.
+
+**Decision**
+Compare both CNNs with `rbf_svm_hog` (best classical model by validation) and `rbf_svm_pixels` (same classifier on raw
+pixels). Show misclassified-image grids for the three pairs both CNN3 and the SVM confuse most (Shirt → T-shirt/top,
+T-shirt/top → Shirt, Shirt → Coat), 8 images per model, the first in test order. Report end-to-end time per 1,000
+images: model time plus 216 ms HOG extraction for HOG models (D-032), model time alone for CNNs.
+
+**Alternatives considered**
+| Option | Why not chosen |
+|---|---|
+| Compare with all 12 Phase 1 models | The table gets long without adding insight; `summary_all.csv` already holds every row |
+| Show images where only one model is wrong | Needs a new plotting function; the counts in `model_agreement()` plus naming the swapped images in the text give the same evidence |
+| Compare model-only time | Would hide that the SVM also needs HOG features before it can predict |
+
+**Why**
+The best classical model is the fair opponent; the same pairs from both models make the "AML vs CNN" contrast direct;
+first-in-order images avoid cherry-picking (D-032).
+
+**How it works**
+1. Test results (saved predictions only): CNN3 92.09% / macro F1 0.9208 (791 errors), CNN2 91.85% / 0.9176 (815),
+   `rbf_svm_hog` 91.08% / 0.9108 (892), `rbf_svm_pixels` 89.70% / 0.8967 (1,030).
+2. Shirt recall: CNN3 75.1%, SVM 75.2%; of 1,000 shirts, 661 right for both, 90 only CNN3, 91 only SVM, 158 neither.
+3. Errors among T-shirt/Pullover/Coat/Shirt: CNN3 539, SVM 573. Shared errors: 475, of which 398 with the same label.
+4. Cost: CNN3 94 ms per 1,000 images and 0.97 MB (241,546 parameters) vs the SVM's ~29.1 s end to end and 366 MB.
+
+**Files touched**
+- `notebooks/07_cnn_vs_classical.ipynb`, `src/results.py` (`plot_recall_comparison` legend below the axes),
+  `results/figures/cnn_recall_vs_classical.png`, `errors_confusion_cnn{2,3}_images.png`,
+  `errors_misclassified_{cnn3_images,rbf_svm_hog}_*.png`
+
+**Concepts worth learning**
+- **Macro F1:** the unweighted mean of per-class F1, so a weak class pulls it down as much as a strong one pushes it up.
+- **Precision vs recall for one class:** recall = share of true shirts found; precision = share of "Shirt" predictions
+  that are really shirts. CNN3 improves Shirt precision (77.4% vs 75.3%) but not recall.
+- **Shared errors as a data-quality signal:** when two very different models make the same mistake, suspect the image
+  or its label.
+
+**Revisit if**
+A model is added whose features cost more time than its prediction, or the report needs one-model-only error grids.
