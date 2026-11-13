@@ -98,3 +98,41 @@ from src.experiment import tune_on_val, final_test_run
 best, table = tune_on_val("knn", make_knn, KNN_GRID, kind="hog")
 metrics = final_test_run("knn", make_knn, best, kind="hog")
 ```
+
+## v2 additions (Capstone Phase 2: CNN)
+
+### `src/config.py`
+`CNN_BATCH_SIZE = 64`, `CNN_LR = 0.001`, `CNN_MAX_EPOCHS = 30`, `CNN_PATIENCE = 5`, `CNN_DROPOUT = 0.5`,
+`CNN_PREDICT_BATCH = 1000`, `MODELS_DIR = ROOT / "models"`, `TRAINING_DIR = RESULTS_DIR / "training"`.
+
+### `src/utils.py`
+`set_seed(seed=SEED)` also calls `torch.manual_seed(seed)` (D-036).
+
+### `src/cnn.py` (new)
+| Function / class | Takes | Returns | Notes |
+|---|---|---|---|
+| `make_loaders(batch_size=CNN_BATCH_SIZE)` | int | dict `{"train", "val"}` of `DataLoader`s | From `load_splits()`; images (N, 1, 28, 28) float32; train shuffled with a seeded generator; **no test loader** |
+| `CNN2()`, `CNN3()` | — | `nn.Module` | Layers in D-034; dropout `CNN_DROPOUT` |
+| `count_params(model)` | `nn.Module` | int | Trainable parameters: 421,642 (CNN2), 241,546 (CNN3) |
+| `CNNPredictor(model)` | trained `nn.Module` | object with `.predict(X)` and `.model` | `predict` takes (N, 28, 28) float32, returns int64 class indices; `eval()` + `no_grad()`, batches of `CNN_PREDICT_BATCH` |
+| `train_cnn(name, model, loaders)` | `"cnn2"`/`"cnn3"`, fresh model, `make_loaders()` output | val summary dict (`data-formats.md` §13) | Adam + cross-entropy, early stopping on val loss, restores best weights in `model`. Writes `models/{name}_images_best.pt`, `results/training/{name}_images_history.csv`, `results/metrics/{name}_images_val.json` |
+
+### `src/experiment.py`
+| Function | Takes | Returns | Side effects |
+|---|---|---|---|
+| `final_test_run_cnn(name, model)` | `"cnn2"`/`"cnn3"`, a fresh model of that architecture | metrics dict (`data-formats.md` §8) | Loads `models/{name}_images_best.pt` (`RuntimeError` if missing), calls `evaluate(CNNPredictor(model), X_test, y_test, name, "images", settings, train_time_s)`, appends to `test_log.csv`. The only v2 code that reads test images |
+
+### `src/evaluate.py`
+- `model_size_detail(model)` returns `{"type": "parameters", "value": <count>}` for a `CNNPredictor`.
+- `environment()` adds `"torch": <version>`.
+
+### `src/results.py`
+- `V1_MODELS = ["dummy", "logreg", "knn", "rf", "linear_svm", "rbf_svm"]`; `MODEL_ORDER` adds `cnn2`, `cnn3`;
+  `FEATURE_ORDER` adds `images`.
+- `load_all_metrics(split="test", models=V1_MODELS)`, `pick_best_experiment(models=V1_MODELS)`,
+  `build_summary(models=V1_MODELS, filename="summary.csv")`: defaults reproduce Phase 1 exactly; v2 calls
+  `build_summary(models=MODEL_ORDER, filename="summary_all.csv")` (D-037).
+- `plot_misclassified(experiment, true_c, pred_c, n=16, tag="")`: a non-empty `tag` gives
+  `errors_misclassified_{tag}_{true}_vs_{pred}.png`, so v2 never overwrites a Phase 1 figure.
+- `plot_recall_comparison(experiments)` (new): grouped bars of per-class test recall for the given experiments;
+  saves `cnn_recall_vs_classical.png`.

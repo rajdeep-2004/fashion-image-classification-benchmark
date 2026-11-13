@@ -65,6 +65,13 @@ These are what the professor will check. Breaking any of them invalidates our re
 7. Every run of `final_test_run()` appends a row to `results/test_log.csv`. Don't delete or edit that file by hand.
    If you must re-run a test evaluation (e.g. after fixing a bug), explain why in `docs/decisions.md` and the PR.
 
+**Additional rules for v2 (CNN)** (`docs/system-design.md` §12):
+8. CNNs train on the 54k train split only. Val is for early stopping and choosing CNN2 vs CNN3, never for weight updates.
+9. There is no test DataLoader. The test set is read only by `experiment.final_test_run_cnn()`, once per CNN, after the
+   final CNN has been chosen on validation.
+10. Always score with `model.eval()` and `torch.no_grad()` (use `CNNPredictor`), so dropout is off.
+11. Never change Phase 1 outputs: v2 writes `results/summary_all.csv` and tagged figure names (D-037).
+
 ## 5. Coding rules (keep it simple)
 - Plain functions in `src/`. No classes unless sklearn needs them, and no frameworks, no YAML configs, no clever abstractions.
 - Function names and signatures **exactly** as in `docs/module-interfaces.md`. If you need to change one, edit that doc

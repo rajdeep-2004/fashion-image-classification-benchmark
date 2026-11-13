@@ -6,8 +6,8 @@
 ## 1. Naming conventions
 | Thing | Allowed values |
 |---|---|
-| Model `name` | `dummy`, `logreg`, `knn`, `rf`, `linear_svm`, `rbf_svm` (Phase 2 will add `cnn`, …) |
-| Feature `kind` | `pixels`, `hog` |
+| Model `name` | `dummy`, `logreg`, `knn`, `rf`, `linear_svm`, `rbf_svm`; v2: `cnn2`, `cnn3` |
+| Feature `kind` | `pixels`, `hog`; v2: `images` (the raw 28×28 image, used only by CNNs) |
 | Data `split` | `train` (54k), `val` (6k), `trainval` (60k = train + val), `test` (10k) |
 | Experiment id | `{name}_{kind}`, e.g. `rbf_svm_hog` |
 
@@ -163,3 +163,42 @@ Phase 05 produces `results_pixels_vs_hog.png`, `results_acc_vs_time.png`, `resul
 `errors_confusion_{experiment}.png` (the best model: `errors_confusion_rbf_svm_hog.png`) and one
 `errors_misclassified_{true}_vs_{pred}.png` per top-5 confused pair. Class names are lower-cased with `/` and spaces
 turned into `_`, e.g. `errors_misclassified_shirt_vs_t-shirt_top.png`.
+
+## 13. v2: CNN validation result — `results/metrics/{name}_images_val.json` (COMMITTED)
+```json
+{
+  "experiment": "cnn2_images", "model": "cnn2", "features": "images", "split": "val",
+  "settings": {"batch_size": 64, "lr": 0.001, "max_epochs": 30, "patience": 5, "dropout": 0.5, "optimizer": "adam"},
+  "best_epoch": 0, "epochs_run": 0,
+  "best_val_loss": 0.0, "best_val_acc": 0.0, "val_macro_f1": 0.0, "train_acc_at_best": 0.0,
+  "param_count": 421642, "train_time_s": 0.0, "device": "cpu", "torch": "2.15.0",
+  "timestamp": "2026-11-14T12:00:00"
+}
+```
+- `best_val_acc` is the val accuracy of the restored best weights, so `results.comparable_val_acc()` works unchanged.
+- `train_time_s` is the wall-clock time of the whole run, including the epochs after the best one.
+
+## 14. v2: training history — `results/training/{name}_images_history.csv` (COMMITTED)
+| Column | Type |
+|---|---|
+| `epoch` | int, from 1 |
+| `train_loss`, `train_acc` | float, averaged over the epoch's batches (dropout on) |
+| `val_loss`, `val_acc` | float, on all 6k val images (dropout off) |
+| `epoch_s` | float, seconds |
+
+## 15. v2: checkpoints — `models/{name}_images_best.pt` (gitignored)
+`torch.save(model.state_dict())` of the best epoch. Read only by `final_test_run_cnn()`.
+
+## 16. v2: test results and tables
+- `results/metrics/{name}_images_test.json`: the §8 schema unchanged. `best_params` holds the training settings,
+  `model_size_detail` is `{"type": "parameters", "value": <count>}`, `env` adds `"torch"`. `train_time_s` is the
+  training run on 54k (not a 60k refit, D-035).
+- `results/test_log.csv`: +2 rows (`cnn2_images`, `cnn3_images`), 14 in total.
+- `results/summary_all.csv`: the §11 columns, one row per test JSON of every model, 14 rows. `summary.csv` stays the
+  12 Phase 1 rows (D-037).
+
+## 17. v2: figures
+New stage `cnn`. Notebook 06: `cnn_training_curves.png` (loss and accuracy per epoch, train vs val, both CNNs, best
+epoch marked). Notebook 07: `cnn_recall_vs_classical.png`, `errors_confusion_cnn2_images.png`,
+`errors_confusion_cnn3_images.png`, and `errors_misclassified_{experiment}_{true}_vs_{pred}.png` for the final CNN's
+top confused pairs (via `plot_misclassified(..., tag=experiment)`).

@@ -1,7 +1,7 @@
 # Product Requirements
 
-> Status: approved; v1 delivered 2026-10-26 — Last updated: 2026-10-26
-> Scope: **Capstone Phase 1 (classical ML) = release v1.** Capstone Phase 2 (CNN + hybrid) will be planned later as v2.
+> Status: v1 delivered 2026-10-26 (tag `v1.0.0`); v2 planned — Last updated: 2026-11-14
+> Scope: **Capstone Phase 1 (classical ML) = release v1.** **Capstone Phase 2 (CNN) = release v2**, see §10.
 
 ## 1. Problem
 A small online clothing catalogue wants to auto-tag product photos (shirt, trouser, sneaker, …)
@@ -103,3 +103,44 @@ Measurable outcomes:
 | 1 | Who owns each of the 5 phases? | User + team | Yes: see `docs/progress.md` (phase 05 split in two, D-031) |
 | 2 | Submission deadline | User | No |
 | 3 | Exact report/slide requirements from the brief | User | No, parked |
+
+## 10. v2 — Capstone Phase 2: a small CNN
+
+### 10.1 Problem
+Phase 1's best model, an RBF SVM on HOG features, reached 91.08% test accuracy, and every classical model confused
+Shirt with T-shirt/top, Pullover and Coat. Flattened pixels throw away which pixels are neighbours, and HOG fixes the
+features before the model sees any examples. A convolutional neural network learns its own filters from the images.
+v2 asks whether that closes the gap, measured on exactly the same split, test set and metrics.
+
+### 10.2 Research questions
+| # | Question |
+|---|---|
+| RQ5 | Does a small CNN beat the best classical model (`rbf_svm_hog`, 91.08% test) on accuracy and macro F1? |
+| RQ6 | Does the CNN reduce the Shirt / T-shirt / Pullover / Coat confusion? |
+| RQ7 | Does a third conv block help (CNN2 vs CNN3), and what does early stopping do? |
+| RQ8 | What does the CNN cost compared with the classical models (parameters, size, inference time)? |
+
+### 10.3 Features (must have)
+| ID | Feature | Acceptance criteria |
+|---|---|---|
+| F-15 | CNN data loaders | `make_loaders()` builds train (shuffled, seeded) and val loaders from `load_splits()`, images shaped (N, 1, 28, 28). No test loader exists. |
+| F-16 | CNN2 and CNN3 | `count_params(CNN2()) == 421,642` and `count_params(CNN3()) == 241,546` (D-034). |
+| F-17 | Training with early stopping | `train_cnn()` trains on 54k, stops on val loss (patience 5), restores the best weights, writes the history CSV, the val JSON and a checkpoint. Re-running gives the same val accuracy. |
+| F-18 | Model choice on val | Training curves for both CNNs; the final CNN is chosen by val accuracy before any test run (D-035). |
+| F-19 | CNN test evaluation | `final_test_run_cnn()` scores each CNN once with the shared `evaluate()`: accuracy, macro F1, per-class recall, parameter count, inference time. `test_log.csv` gains exactly 2 rows; `results/summary_all.csv` has 14 rows; Phase 1 files unchanged. |
+| F-20 | AML vs CNN comparison and error analysis | Side-by-side metrics vs `rbf_svm_hog`, confusion matrices, misclassified-image grids for the same class pairs from both models, model agreement, and a written answer to RQ5–RQ8. Reads saved predictions only. |
+| F-21 | Write-up | README Phase 2 section, IEEE LaTeX report and slides in `report/v2/`. |
+
+### 10.4 Non-goals (v2)
+- Transfer learning, pretrained networks, data augmentation, batch normalization, LR schedulers, hyperparameter search.
+- A hybrid CNN-features + SVM model, filter or feature-map visualizations, extra ablations (parked in `progress.md`).
+- Any change to Phase 1 results, figures, notebooks 01–05, the split file or the seed.
+
+### 10.5 Success metrics and sanity ranges
+| Check | Expected | If outside |
+|---|---|---|
+| CNN2 / CNN3 val and test accuracy | ~91–93% | Below ~89%: suspect a bug (missing `model.eval()`, wrong reshape, wrong learning rate) |
+| Shirt recall | Lowest class again, ~70–80% | Check the confusion matrix |
+| Best epoch | ~5–20 | Best epoch 1 or 30: check learning rate and patience |
+| Test log | 14 rows, each experiment once | Explain any repeat in `decisions.md` |
+Beating 91.08% is likely but not guaranteed; a tie with a much smaller, faster model is still a finding.

@@ -42,10 +42,10 @@ the "Ablation Studies" rubric item.
 | Area | Change |
 |---|---|
 | Root | Clean: early brainstorming notes live in `docs/ideas/` |
-| `requirements.txt` | Add pinned `torch` (CPU build) |
-| `src/` | New `cnn.py` (data loaders, CNN2/CNN3, `count_params`, predictor wrapper, `train_cnn` with early stopping). Small, logged additions to `config`, `utils.set_seed`, `experiment` (`final_test_run_cnn`), `evaluate` (`param_count`), `results` (ordering lists) |
-| `notebooks/` | `06_cnn.ipynb` (train CNN2 + CNN3, curves, choose on val, one test run each) and `07_cnn_vs_classical.ipynb` (comparison table, confusion matrices, AML vs CNN misclassified examples, error analysis) |
-| `results/` | `cnn_` figures, `results/training/*_history.csv`, val/test JSONs, `summary.csv` to 14 rows, `test_log.csv` to 14 rows |
+| `requirements.txt` | Add pinned `torch==2.15.0` (CPU build), no torchvision (D-039) |
+| `src/` | New `cnn.py` (data loaders, CNN2/CNN3, `count_params`, predictor wrapper, `train_cnn` with early stopping). Small, logged additions to `config`, `utils.set_seed`, `experiment` (`final_test_run_cnn`), `evaluate` (`param_count`), `results` (Phase 1 defaults, `summary_all.csv`, tagged figure names; D-037) |
+| `notebooks/` | `06_cnn_training.ipynb` (train CNN2 + CNN3, curves, choose on val, one test run each) and `07_cnn_vs_classical.ipynb` (comparison table, confusion matrices, AML vs CNN misclassified examples, error analysis) |
+| `results/` | `cnn_` figures, `results/training/*_history.csv`, val/test JSONs, `summary_all.csv` with 14 rows (`summary.csv` stays the 12 Phase 1 rows, D-037), `test_log.csv` to 14 rows |
 | `models/` | Checkpoints, gitignored (error analysis reads saved predictions; checkpoints retrain from seed) |
 | `docs/` | Append short v2 sections to prd, architecture, interfaces, formats; v2 table in progress.md; decisions from D-033 |
 | `report/` | v1 files stay where they are; new `report/v2/` for report and slides |
@@ -64,3 +64,4 @@ the "Ablation Studies" rubric item.
 ## Distribution Plan
 Course submission: GitHub repo (tag `v2.0.0` at the end), report PDF and slides in `report/v2/`.
 
+Detailed decisions: D-033 to D-039 in `docs/decisions.md`. Phase files: `docs/phases/v2/`.

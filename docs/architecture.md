@@ -125,3 +125,29 @@ There are no environment variables or secrets. All settings are constants in `sr
 | `N_JOBS` | Parallel workers, capped for 8 GB RAM | `4` |
 | `CLASS_NAMES` | 10 label names | `["T-shirt/top", …, "Ankle boot"]` |
 | Paths | `DATA_RAW`, `SPLITS_DIR`, `FEATURES_DIR`, `RESULTS_DIR`, `METRICS_DIR`, `FIGURES_DIR`, … | `ROOT / "data" / "raw"` |
+
+## 11. v2 additions (Capstone Phase 2: CNN)
+```mermaid
+flowchart LR
+  DATA[src/data.py<br/>load_splits] -->|train + val images| CNN[src/cnn.py<br/>make_loaders, CNN2, CNN3, train_cnn]
+  CNN -->|best weights| CKPT[(models/*_best.pt<br/>gitignored)]
+  CNN -->|history, val JSON| RES1[(results/training, results/metrics)]
+  CKPT --> EXP[src/experiment.py<br/>final_test_run_cnn]
+  DATA -->|test images, once| EXP
+  EXP -->|CNNPredictor| EVAL[src/evaluate.py<br/>unchanged metrics]
+  EVAL --> RES2[(results/metrics/cnn*_images_test.json<br/>test_log.csv)]
+  RES2 --> R[src/results.py] --> OUT[(results/summary_all.csv<br/>figures)]
+```
+
+| Module | Owns | Depends on | Must not |
+|---|---|---|---|
+| `cnn.py` (new) | Data loaders, CNN2/CNN3, `count_params`, `CNNPredictor`, `train_cnn` (training loop, early stopping) | `config`, `utils`, `data` | Build a test loader or touch `X_test` |
+| `experiment.py` (+`final_test_run_cnn`) | The single CNN test run | `cnn`, `evaluate`, `data` | Train |
+
+New layout entries: `src/cnn.py`; `notebooks/06_cnn_training.ipynb` (training, model choice, the two test runs),
+`notebooks/07_cnn_vs_classical.ipynb` (comparison and error analysis from saved files); `results/training/`;
+`results/summary_all.csv`; `models/` (gitignored); `report/v2/`.
+
+Stack: PyTorch `torch==2.15.0`, CPU only (D-036, D-039). New config constants: `CNN_BATCH_SIZE = 64`, `CNN_LR = 0.001`,
+`CNN_MAX_EPOCHS = 30`, `CNN_PATIENCE = 5`, `CNN_DROPOUT = 0.5`, `CNN_PREDICT_BATCH = 1000`, `MODELS_DIR`, `TRAINING_DIR`.
+Layering is unchanged: only `experiment.final_test_run()` and `experiment.final_test_run_cnn()` predict on test data.
