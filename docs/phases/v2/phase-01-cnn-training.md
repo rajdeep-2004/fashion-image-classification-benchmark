@@ -39,7 +39,7 @@ in [0, 1], shape (N, 28, 28). `evaluate()` scores any object with `.predict()`. 
 - `decisions.md` → D-034, D-035, D-036, D-038, D-039
 
 ## Tasks
-- [ ] 01.1 — add torch, CNN config constants, seed PyTorch in `set_seed()`, gitignore `models/` → `chore(cnn): add PyTorch and CNN settings`
+- [x] 01.1 — add torch, CNN config constants, seed PyTorch in `set_seed()`, gitignore `models/` → `chore(cnn): add PyTorch and CNN settings`
 - [ ] 01.2 — `src/cnn.py`: `make_loaders`, `CNN2`, `CNN3`, `count_params`, `CNNPredictor` → `feat(cnn): data loaders and CNN2/CNN3 models`
 - [ ] 01.3 — `src/cnn.py`: `train_cnn` with early stopping, history CSV, val JSON, checkpoint → `feat(cnn): training loop with early stopping`
 - [ ] 01.4 — `notebooks/06_cnn_training.ipynb` training part; train both CNNs; curves; choose on val; decision entry → `feat(cnn): train CNN2 and CNN3 and choose on validation`

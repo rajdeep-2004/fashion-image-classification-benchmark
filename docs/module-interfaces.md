@@ -18,7 +18,7 @@ Modules read these at call time (`config.X` inside functions), so a scratch chec
 ## `src/utils.py`
 | Function | Takes | Returns | Notes |
 |---|---|---|---|
-| `set_seed(seed=SEED)` | int | None | Seeds `random` and `numpy` |
+| `set_seed(seed=SEED)` | int | None | Seeds `random`, `numpy` and `torch` |
 | `Timer(label)` | str | context manager with `.seconds` | `with Timer("fit") as t: ...` prints `fit: 12.3s` |
 | `save_fig(fig, name)` | matplotlib Figure, filename without extension | `Path` | Saves `FIGURES_DIR/{name}.png` at 300 dpi, creating the folder if needed |
 | `save_json(obj, path)` | dict, `Path` | None | Writes indented JSON, converting NumPy numbers/arrays; creates the folder |

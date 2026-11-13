@@ -47,3 +47,13 @@ TEST_LOG_PATH = RESULTS_DIR / "test_log.csv"
 HOG_SWEEP_PATH = RESULTS_DIR / "hog_sweep.csv"
 
 FIGURE_DPI = 300
+
+# --- Phase 2 CNN (D-034, D-036, D-038) -------------------------------------------
+CNN_BATCH_SIZE = 64        # images per training step (~844 steps per epoch on 54k)
+CNN_LR = 0.001             # Adam learning rate
+CNN_MAX_EPOCHS = 30        # upper bound; early stopping usually ends sooner
+CNN_PATIENCE = 5           # stop after this many epochs without a lower val loss
+CNN_DROPOUT = 0.5          # dropout before the last layer
+CNN_PREDICT_BATCH = 1000   # images per forward pass when predicting (bounds memory)
+MODELS_DIR = ROOT / "models"             # best checkpoints (gitignored)
+TRAINING_DIR = RESULTS_DIR / "training"  # per-epoch history CSVs
