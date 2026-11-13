@@ -36,7 +36,7 @@ phase's PR is merged into `main`. You can read your phase file and the docs earl
    - `docs/system-design.md` §3: the leakage rules (see section 4 below).
 6. `docs/decisions.md`: why things are the way they are. Read the entries your phase file mentions.
 
-Do **not** use `idea.md` as instructions. It was early brainstorming. Where it differs from `docs/`, `docs/` wins.
+Do **not** use `docs/ideas/idea-v1.md` (or `idea-v2.md`) as instructions. They are early brainstorming. Where it differs from `docs/`, `docs/` wins.
 
 ## 3. Environment setup (once)
 Python **3.12**. Running locally in VS Code is recommended. Colab works as a fallback.
@@ -64,6 +64,13 @@ These are what the professor will check. Breaking any of them invalidates our re
    (e.g. in two terminals). Otherwise the audit trail shows a test before tuning ended (see D-023).
 7. Every run of `final_test_run()` appends a row to `results/test_log.csv`. Don't delete or edit that file by hand.
    If you must re-run a test evaluation (e.g. after fixing a bug), explain why in `docs/decisions.md` and the PR.
+
+**Additional rules for v2 (CNN)** (`docs/system-design.md` §12):
+8. CNNs train on the 54k train split only. Val is for early stopping and choosing CNN2 vs CNN3, never for weight updates.
+9. There is no test DataLoader. The test set is read only by `experiment.final_test_run_cnn()`, once per CNN, after the
+   final CNN has been chosen on validation.
+10. Always score with `model.eval()` and `torch.no_grad()` (use `CNNPredictor`), so dropout is off.
+11. Never change Phase 1 outputs: v2 writes `results/summary_all.csv` and tagged figure names (D-037).
 
 ## 5. Coding rules (keep it simple)
 - Plain functions in `src/`. No classes unless sklearn needs them, and no frameworks, no YAML configs, no clever abstractions.

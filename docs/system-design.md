@@ -133,3 +133,37 @@ If they get too slow, the mitigation is the documented subset, or PCA-reduced pi
 | RBF SVM tuned on 10k, not 54k | Full-size tuning would take hours on a laptop | Never for v1. It's documented in the report. |
 | Timing measured on laptops with `n_jobs=4` | Phase 03 ran on an Apple M3 and phase 04 on an M3 Pro; gaps of 10× or more are still clear, small gaps are approximate (D-028) | A single-machine re-timing, or Phase 2 GPU timings (report them separately) |
 | Duplicates kept | Matches the official benchmark protocol | Sanity checks find a large number of duplicates |
+
+## 12. v2 additions (Capstone Phase 2: CNN)
+
+### Flow E: Train, choose and test a CNN (notebook 06)
+1. `make_loaders()` calls `load_splits()`, keeps train (54k, shuffled with a seeded generator) and val (6k), drops test.
+2. `train_cnn("cnn2", CNN2(), loaders)`: per epoch, train on all batches, then score val with dropout off; keep the
+   weights with the lowest val loss; stop after 5 epochs without improvement; restore the best weights; write
+   `models/cnn2_images_best.pt`, `results/training/cnn2_images_history.csv`, `results/metrics/cnn2_images_val.json`.
+3. Same for CNN3. Compare val accuracies; record the final CNN (D-035).
+4. `final_test_run_cnn("cnn2")` and `("cnn3")`: load the checkpoint, wrap in `CNNPredictor`, call `evaluate()` once on
+   the 10k test images, append to `test_log.csv`.
+5. Notebook 07 reads only saved JSONs/CSVs (+ true test labels/images for the image grids), as Phase 1's notebook 05 does.
+
+### Leakage controls added in v2
+| Possible loophole | How we close it |
+|---|---|
+| Test images used in training or early stopping | `make_loaders()` has no test loader; only `final_test_run_cnn()` reads `X_test` |
+| CNN2 vs CNN3 picked on test | Choice by val accuracy, recorded before the test runs (D-035) |
+| Val data used for weight updates | Val is only scored, under `torch.no_grad()`; no refit on train + val |
+| Dropout left on when scoring | `CNNPredictor` and the val step call `model.eval()` |
+| Normalization statistics from val/test | None are computed: pixels are already in [0, 1] from `load_splits()` |
+| Test repeated on notebook re-run | Notebook 06 skips a test run whose test JSON exists; every run is logged in `test_log.csv` |
+| Phase 1 outputs changed by v2 | `results.py` defaults to Phase 1 models; v2 writes `summary_all.csv`; tagged figure names (D-037) |
+
+### Failure modes added in v2
+| Failure | Detection | Behavior / recovery |
+|---|---|---|
+| Out of memory when predicting 10k images | Kernel crash | `CNNPredictor` predicts 1,000 images at a time (`CNN_PREDICT_BATCH`) |
+| Checkpoint missing at test time (fresh clone) | `RuntimeError` from `final_test_run_cnn` | Message says to delete the val JSON and re-run the training cell |
+| Training diverges or stalls | Val accuracy outside the PRD §10.5 range; best epoch 1 or 30 | Check learning rate, `model.eval()`, reshape; the history CSV shows every epoch |
+| Different numbers on re-run | Val accuracy differs from the committed JSON | CPU only, seeded, deterministic algorithms, `num_workers=0` (D-036) |
+| Slow training on the laptop | Epoch time in the history CSV | Expected a few minutes per model on an M3 CPU; Colab CPU as fallback (record the device) |
+
+Trade-off accepted: CNNs learn from 54k images while Phase 1 models were refit on 60k (D-035); this can only favour Phase 1.

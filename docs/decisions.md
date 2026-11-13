@@ -46,6 +46,13 @@ Rules:
 | D-030 | 2026-10-25 | v1/05 | Phase 05 aggregation: validation-selected model ranking and non-comparable timing rules | Active |
 | D-031 | 2026-10-26 | v1/05 | Phase 05 split between two owners and two PRs | Active |
 | D-032 | 2026-10-26 | v1/05 | Error analysis from saved predictions; end-to-end speed counts HOG extraction | Active |
+| D-033 | 2026-11-14 | v2 | Phase 2 (CNN) is built in this repository as v2, append-only | Active |
+| D-034 | 2026-11-14 | v2 | CNN2 and CNN3 architectures and fixed training settings | Active |
+| D-035 | 2026-11-14 | v2 | CNNs train on the 54k train split only; final CNN chosen by val accuracy | Active |
+| D-036 | 2026-11-14 | v2 | CNNs train and predict on CPU, seeded and deterministic, with N_JOBS threads | Active |
+| D-037 | 2026-11-14 | v2 | Scoring a CNN with the unchanged evaluate(); Phase 1 outputs protected in results.py | Active |
+| D-038 | 2026-11-14 | v2 | Checkpoints gitignored; training history committed; notebook re-run guards | Active |
+| D-039 | 2026-11-14 | v2 | Add PyTorch (torch==2.15.0, CPU) as the only new dependency | Active |
 
 ---
 
@@ -1541,3 +1548,313 @@ End-to-end time is what a user of the model would actually wait for.
 
 **Revisit if**
 Timings are re-measured on one machine, or Phase 2 adds a model whose features cost more than its prediction.
+
+### D-033 — Phase 2 (CNN) is built in this repository as v2, append-only
+- **Date:** 2026-11-14
+- **Phase:** v2 — planning
+- **Status:** Active
+- **Type:** architecture
+
+**Context**
+Capstone Phase 2 trains a small CNN on Fashion-MNIST and compares it with the Phase 1 classical models. The core research
+question is a comparison, so the CNN must be scored on the same split, the same test set and the same `evaluate()` as the
+classical models, and both families should end up in one results table. Phase 1 is finished and must not change.
+
+**Decision**
+Phase 2 is added to this repository as release v2. Phase 1 is frozen at git tag `v1.0.0`; v2 only adds files (new
+`src/` code, notebooks 06+, new result files and rows, v2 doc sections, `docs/phases/v2/`, `report/v2/`).
+
+**Alternatives considered**
+| Option | Why not chosen |
+|---|---|
+| Move Phase 1 into a `phase1/` folder and start a `phase2/` folder | Breaks the `src` imports in notebooks 01–05, the paths in `config.py`, the README run steps and the "fresh clone reproduces every result" property; the two model families would sit in separate result tables |
+| A separate repository for Phase 2 | The Phase 1 split, data loader, `evaluate()` and saved predictions would have to be copied in to compare fairly; two copies can drift apart |
+
+**Why**
+Everything the comparison needs (`load_splits()`, the split file, `evaluate()`, `final_test_run()`, `summary.csv`,
+`test_log.csv`, the error-analysis functions) already lives here. Appending reuses it unchanged, and the tag gives an
+exact, citable snapshot of Phase 1.
+
+**How it works**
+1. `git tag v1.0.0` marks the last Phase 1 commit. `git checkout v1.0.0` always shows Phase 1 exactly as submitted.
+2. Phase 2 code and notebooks are new files; shared modules only get small, backward-compatible additions, each logged
+   as its own decision.
+3. CNN experiments are added as new rows to `results/summary.csv` and `results/test_log.csv`; Phase 1's 12 rows stay
+   byte-identical.
+4. The Phase 2 report and slides go in `report/v2/`; the Phase 1 report stays in `report/`.
+5. Early brainstorming notes moved from the repo root to `docs/ideas/` (`idea-v1.md`, `idea-v2.md`). They are background,
+   not instructions; `docs/` wins where they differ.
+
+**Files touched**
+- `docs/ideas/idea-v1.md` (moved from `idea.md`), `docs/ideas/idea-v2.md` (new): brainstorming notes
+- `docs/designs/v2-cnn-phase.md` (new): Phase 2 scope and layout
+- `AGENTS.md`, `README.md`, `docs/architecture.md`: point to the new location of the idea notes
+- `docs/decisions.md`: this entry
+
+**Concepts worth learning**
+- **Git tag:** a fixed name for one commit, used to mark a release (`v1.0.0`) that can always be checked out again.
+- **Append-only change:** new work adds files instead of editing finished ones, so earlier results stay reproducible.
+- **Fair comparison:** two models are only comparable when they see the same data split and are scored by the same code.
+
+**Revisit if**
+Phase 2 needs a change to a Phase 1 result file, the split or the seed (that would need its own decision and a re-run note).
+
+### D-034 — CNN2 and CNN3 architectures and fixed training settings
+- **Date:** 2026-11-14
+- **Phase:** v2 — planning
+- **Status:** Active
+- **Type:** algorithm
+
+**Context**
+The Project 11 brief asks for "a two or three block CNN with pooling, dropout and early stopping". The CNN must be small
+enough to train on a laptop CPU in minutes and simple enough to explain layer by layer.
+
+**Decision**
+Build two networks, CNN2 (2 conv blocks) and CNN3 (3 conv blocks), and train both with one fixed set of settings:
+Adam (learning rate 0.001), cross-entropy loss, batch size 64, at most 30 epochs, early stopping with patience 5 on
+validation loss, dropout 0.5. There is no hyperparameter search.
+
+**Alternatives considered**
+| Option | Why not chosen |
+|---|---|
+| Only one CNN (2 blocks) | Meets the brief, but comparing 2 vs 3 blocks is one extra training run with the same code and gives the ablation the course asks for |
+| A hyperparameter search (learning rate, filters, dropout) | Not in the brief; costs many training runs; the defaults below are standard and work well on Fashion-MNIST |
+| Batch normalization, data augmentation, LR schedulers | Not in the brief; each adds something to explain without answering the research question |
+
+**Why**
+These are the textbook settings for a small CNN on 28×28 images (LeNet-style). Keeping them fixed means the only
+difference between CNN2 and CNN3 is depth, so the comparison is a clean ablation.
+
+**How it works**
+1. **CNN2:** Conv(1→32, 3×3, padding 1) + ReLU → MaxPool(2) → Conv(32→64, 3×3, padding 1) + ReLU → MaxPool(2) →
+   Flatten (64×7×7 = 3,136) → Linear(3136→128) + ReLU → Dropout(0.5) → Linear(128→10). Parameters: 320 + 18,496 +
+   401,536 + 1,290 = **421,642**.
+2. **CNN3:** CNN2's two blocks plus Conv(64→128, 3×3, padding 1) + ReLU → MaxPool(2) → Flatten (128×3×3 = 1,152) →
+   Linear(1152→128) + ReLU → Dropout(0.5) → Linear(128→10). Parameters: 320 + 18,496 + 73,856 + 147,584 + 1,290 =
+   **241,546**. CNN3 has *fewer* parameters because the extra pooling shrinks what feeds the big dense layer.
+3. Training loop per epoch: shuffle the 54k training images, go through them in batches of 64 (about 844 updates),
+   then compute loss and accuracy on the 6k validation images with dropout off.
+4. Early stopping: remember the weights with the lowest validation loss; stop when 5 epochs pass without a new
+   lowest; put the remembered weights back.
+
+**Files touched**
+- `src/config.py`: `CNN_BATCH_SIZE`, `CNN_LR`, `CNN_MAX_EPOCHS`, `CNN_PATIENCE`, `CNN_DROPOUT`
+- `src/cnn.py`: `CNN2`, `CNN3`, `count_params`, `train_cnn`
+
+**Concepts worth learning**
+- **Convolution / feature map:** a small learned filter slid over the image; its output map lights up where the
+  filter's pattern appears.
+- **Max pooling:** keeps the strongest value in each 2×2 window, halving height and width.
+- **Dropout:** randomly zeroes units during training so the network cannot rely on any single one.
+- **Early stopping:** stop training when validation loss stops improving, and keep the best weights.
+- **Adam:** gradient descent that adapts the step size per parameter.
+
+**Revisit if**
+Both CNNs fall below the sanity range (~89% val accuracy), or the best epoch is 1 or 30 (learning rate or patience wrong).
+
+### D-035 — CNNs train on the 54k train split only; final CNN chosen by val accuracy
+- **Date:** 2026-11-14
+- **Phase:** v2 — planning
+- **Status:** Active
+- **Type:** algorithm
+
+**Context**
+Phase 1 refit every chosen model on train + val (60k) before its test run. A CNN uses the validation set *during*
+training, to decide when to stop, so it cannot also train on it.
+
+**Decision**
+CNNs train on the 54k train split only; validation is used for early stopping and for choosing between CNN2 and CNN3,
+never for weight updates. The final CNN is the one with the higher validation accuracy (ties: fewer parameters). After
+the choice is recorded, each CNN gets exactly one test run, so both appear in the results table.
+
+**Alternatives considered**
+| Option | Why not chosen |
+|---|---|
+| Refit on 60k for the epoch count found by early stopping | Adds a second training run per model and a rule to explain, for a fraction of a point at most |
+| Test only the chosen CNN | The depth comparison would then have no test numbers; testing both after the choice is fixed does not influence the choice |
+
+**Why**
+It keeps validation honest: it decides when to stop and which model wins, and the test set decides nothing.
+
+**How it works**
+1. Train CNN2 and CNN3 with D-034's settings; each writes its best validation accuracy.
+2. Compare the two validation accuracies and record the winner in the notebook and in a decision entry.
+3. Only then run one test evaluation per CNN.
+Note for comparisons: the CNN learns from 54k images, the Phase 1 models from 60k. If anything, this favours Phase 1.
+
+**Files touched**
+- `src/cnn.py` (`train_cnn`), `src/experiment.py` (`final_test_run_cnn`), `notebooks/06_cnn_training.ipynb`
+
+**Concepts worth learning**
+- **Validation vs test:** validation guides every choice; test is looked at once, at the end, to report.
+- **Data leakage through early stopping:** if validation data trained the weights, its scores would be optimistic.
+
+**Revisit if**
+The two CNNs are within ~0.2 points on validation (then say the depth comparison is inconclusive).
+
+### D-036 — CNNs train and predict on CPU, seeded and deterministic, with N_JOBS threads
+- **Date:** 2026-11-14
+- **Phase:** v2 — planning
+- **Status:** Active
+- **Type:** tooling
+
+**Context**
+Results must be reproducible from a fresh clone, and inference time must be comparable with Phase 1, whose models ran
+on CPU with `N_JOBS = 4`. The Apple GPU (MPS) is faster but not bit-for-bit reproducible.
+
+**Decision**
+Train and predict on CPU only. `set_seed()` also seeds PyTorch; training sets `torch.use_deterministic_algorithms(True)`,
+loads data with `num_workers=0` and shuffles with a seeded generator; PyTorch uses `config.N_JOBS` threads. The device
+and PyTorch version are stored in the result JSONs.
+
+**Alternatives considered**
+| Option | Why not chosen |
+|---|---|
+| Train on the Apple GPU (MPS) or a Colab GPU | Not reproducible run to run, and GPU inference times are not comparable with CPU-only Phase 1 models |
+| Let PyTorch use all CPU threads | Faster, but makes the speed comparison with `N_JOBS = 4` sklearn models unfair |
+
+**Why**
+A few minutes of extra training time buys identical numbers on every re-run and a fair speed comparison.
+
+**How it works**
+1. `utils.set_seed(42)` seeds `random`, NumPy and `torch.manual_seed`.
+2. The training DataLoader shuffles with `torch.Generator().manual_seed(42)`, so the batch order is the same every run.
+3. `torch.set_num_threads(config.N_JOBS)` before training and prediction.
+
+**Files touched**
+- `src/utils.py` (`set_seed`), `src/cnn.py`, `src/evaluate.py` (`environment()` adds the PyTorch version)
+
+**Concepts worth learning**
+- **Determinism:** the same code, data and seed give the same numbers; some GPU operations break this.
+- **Thread count and timing:** more threads make predictions faster, so timings are only comparable at equal thread counts.
+
+**Revisit if**
+CPU training takes longer than ~20 minutes per model on the laptop.
+
+### D-037 — Scoring a CNN with the unchanged evaluate(); Phase 1 outputs protected in results.py
+- **Date:** 2026-11-14
+- **Phase:** v2 — planning
+- **Status:** Active
+- **Type:** architecture
+
+**Context**
+The fair comparison depends on the CNN being scored by the same `evaluate()` as Phase 1. Reading the shared code showed
+four problems if a CNN result is simply added: (1) `evaluate()` calls `model.predict(X)` on all 10k images at once,
+and a CNN forward pass on 10k images needs about 1 GB of activations on an 8 GB laptop; (2) `model_size_detail()` has
+no case for a neural network; (3) `results.build_summary()` and `pick_best_experiment()` read every JSON, so re-running
+notebook 05 would add CNN rows to Phase 1's `summary.csv`, pick a CNN as Phase 1's best model and redraw Phase 1's
+figures; (4) `plot_misclassified()` names its file only by class pair, so calling it for a CNN would overwrite
+Phase 1's figure for the same pair.
+
+**Decision**
+Wrap the network in `CNNPredictor`, which gives it a `.predict()` that works in batches of 1,000 images, with dropout
+off and no gradients. Add a `"parameters"` case to `model_size_detail()`. In `results.py`, Phase 1 functions read only
+Phase 1 models by default (a `models` argument, default `V1_MODELS`), and the all-model table is written to a separate
+file, `results/summary_all.csv`. `plot_misclassified()` gets an optional `tag` that adds the experiment to the file name.
+
+**Alternatives considered**
+| Option | Why not chosen |
+|---|---|
+| A separate evaluation function for CNNs | Two ways of measuring would make the comparison unfair; reusing `evaluate()` is the point |
+| Let `summary.csv` grow to 14 rows | Re-running notebook 05 would then change Phase 1's outputs and its "best model", breaking the v1 reproducibility claim |
+| Add a `param_count` column to `summary.csv` | Changes a Phase 1 file format; the count is already in each test JSON's `model_size_detail` and in the v2 comparison table |
+
+**Why**
+Each change is a few lines in the function every caller goes through, and every default keeps Phase 1 behaviour
+identical, so notebooks 01–05 still regenerate byte-for-byte.
+
+**How it works**
+1. `CNNPredictor(model).predict(X)` takes (N, 28, 28) float32 images, adds the channel dimension, runs the network on
+   1,000 images at a time under `model.eval()` and `torch.no_grad()`, and returns class indices. The conversion is
+   inside `predict()`, so it is counted in the inference time.
+2. `model_size_bytes()` stays `len(pickle.dumps(model))` (D-008); pickling the predictor stores its weights, about 4
+   bytes per parameter. `model_size_detail()` returns `{"type": "parameters", "value": <count>}` for a CNN.
+3. `results.MODEL_ORDER` and `FEATURE_ORDER` gain `cnn2`, `cnn3` and `images`. `load_all_metrics`, `pick_best_experiment`
+   and `build_summary` take `models=V1_MODELS` by default; v2 calls `build_summary(models=MODEL_ORDER,
+   filename="summary_all.csv")`.
+
+**Files touched**
+- `src/cnn.py` (`CNNPredictor`), `src/evaluate.py` (`model_size_detail`, `environment`), `src/results.py`
+
+**Concepts worth learning**
+- **Adapter (wrapper):** a thin object that gives an existing thing the interface another piece of code expects.
+- **`model.eval()` and `torch.no_grad()`:** turn dropout off and skip gradient bookkeeping at prediction time.
+- **Backward-compatible change:** new behaviour only when asked for; the old call gives the old result.
+
+**Revisit if**
+A model needs a different input than (N, 28, 28) images or saved features.
+
+### D-038 — Checkpoints gitignored; training history committed; notebook re-run guards
+- **Date:** 2026-11-14
+- **Phase:** v2 — planning
+- **Status:** Active
+- **Type:** tooling
+
+**Context**
+A CNN's weights are only needed to run its one test evaluation. Everything after that (tables, confusion matrices,
+misclassified images) reads saved predictions. Notebooks must also survive "Restart & Run All" without retraining for
+minutes or touching the test set a second time.
+
+**Decision**
+Save the best weights to `models/{experiment}_best.pt` (gitignored). Commit the per-epoch history
+(`results/training/{experiment}_history.csv`) so training curves redraw without retraining. Notebook 06 skips training
+when the experiment's val JSON already exists, and skips the test run when its test JSON already exists.
+
+**Alternatives considered**
+| Option | Why not chosen |
+|---|---|
+| Commit the checkpoints (~1–2 MB each) | Not needed by any later step; retraining from the seed gives the same weights |
+| Retrain on every notebook run | Minutes per run, and a re-run could accidentally repeat a test evaluation |
+
+**Why**
+Same pattern as Phase 1 (saved JSONs make re-runs instant and safe), with the smallest repo.
+
+**How it works**
+1. `train_cnn()` writes the checkpoint, the history CSV and the val JSON.
+2. `final_test_run_cnn()` loads the checkpoint; if it is missing it stops with a message to re-run the training cell
+   (delete the val JSON first to force retraining).
+3. In a fresh clone both JSONs exist, so notebook 06 only redraws curves from the history CSVs.
+
+**Files touched**
+- `.gitignore` (`models/`), `src/config.py` (`MODELS_DIR`, `TRAINING_DIR`), `notebooks/06_cnn_training.ipynb`
+
+**Concepts worth learning**
+- **Checkpoint:** a saved copy of a model's weights (`state_dict`) that can be loaded back into the same architecture.
+- **Idempotent notebook:** running it twice has the same effect as running it once.
+
+**Revisit if**
+Retraining stops reproducing the committed validation numbers.
+
+### D-039 — Add PyTorch (torch==2.15.0, CPU) as the only new dependency
+- **Date:** 2026-11-14
+- **Phase:** v2 — planning
+- **Status:** Active
+- **Type:** stack
+
+**Context**
+The brief suggests PyTorch or TensorFlow. The images are already loaded and scaled to [0, 1] by `load_splits()`.
+
+**Decision**
+Add `torch==2.15.0` (CPU wheels) to `requirements.txt`. Do not add `torchvision`.
+
+**Alternatives considered**
+| Option | Why not chosen |
+|---|---|
+| TensorFlow / Keras | Heavier install on Apple Silicon; PyTorch's explicit training loop is easier to explain step by step |
+| Also add `torchvision` | Only needed to download the dataset or for transforms; `load_splits()` already provides the exact Phase 1 split |
+
+**Why**
+One dependency, pinned like the others, and no second data-loading path that could drift from Phase 1's split.
+
+**How it works**
+`load_splits()` gives NumPy arrays; `torch.from_numpy` turns them into tensors; `TensorDataset` + `DataLoader` serve batches.
+
+**Files touched**
+- `requirements.txt`
+
+**Concepts worth learning**
+- **Tensor:** PyTorch's array type, like a NumPy array that can track gradients.
+- **DataLoader:** serves a dataset in (optionally shuffled) mini-batches.
+
+**Revisit if**
+`torch==2.15.0` has no wheel for the Python version in use.

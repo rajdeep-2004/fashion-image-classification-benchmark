@@ -193,7 +193,7 @@ fashion-image-classification-benchmark/
 ├── AGENTS.md                    rules for every contributor and AI tool (including the no-leakage rules)
 ├── CONTRIBUTING.md              step-by-step contributor workflow and troubleshooting
 ├── CLAUDE.md                    project notes for Claude Code
-├── idea.md                      early brainstorming (superseded by docs/)
+├── docs/ideas/                  early brainstorming, idea-v1.md and idea-v2.md (superseded by docs/)
 ├── .github/
 │   └── pull_request_template.md
 ├── src/                         reusable pipeline code (notebooks only call these)

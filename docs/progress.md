@@ -1,6 +1,6 @@
 # Progress
 
-**Current phase:** none. **v1 is complete** (all 5 phases done; ready to tag `v1.0.0`). Next: report/slides (parked), then plan v2 (CNN).
+**Current phase:** v2/01 (not started). **v1 is complete** and tagged `v1.0.0`. v2 (Capstone Phase 2, CNN) is planned.
 **Branch:** —
 **Profile:** lean
 
@@ -14,6 +14,13 @@
 | 04 | [Random Forest & SVM](phases/v1/phase-04-rf-svm.md) | Tanmay Singh | done | phase/v1-04-rf-svm | 2026-10-24 | 2026-10-25 |
 | 05 | [Results, Error Analysis & README](phases/v1/phase-05-results-analysis.md) | Anand Mishra (A), Omved Nagre (B) | done | phase/v1-05-anand-results (A), phase/v1-05-omved-analysis (B) | 2026-10-25 | 2026-10-26 |
 
+### v2 — Capstone Phase 2: CNN
+| # | Phase | Status | Branch | Started | Closed |
+|---|---|---|---|---|---|
+| 01 | [CNN Models & Training](phases/v2/phase-01-cnn-training.md) | not-started | phase/v2-01-cnn-training | | |
+| 02 | [CNN Test Evaluation & Comparison](phases/v2/phase-02-evaluation-comparison.md) | not-started | phase/v2-02-evaluation-comparison | | |
+| 03 | [README, Report & Slides](phases/v2/phase-03-write-up.md) | not-started | phase/v2-03-write-up | | |
+
 Status values: `not-started` → `in-progress` → `review` → `done`
 
 **Team workflow:** each phase is owned by one team member → built on its own branch → opened as a PR into `main` →
@@ -21,6 +28,11 @@ reviewed by the repo owner (with Claude Code) against the phase file and docs �
 each phase starts. Full workflow: [`AGENTS.md`](../AGENTS.md) §6.
 
 ## Session log
+### 2026-11-14 (v2 planning)
+- Tagged `v1.0.0`. Planned v2 (CNN) in this repo, append-only (D-033): PRD §10, architecture §11, system-design §12, interfaces, formats §13–17, AGENTS.md rules 8–11, three v2 phase files, D-034–D-039.
+- Engineering review of the shared code found three ways v2 would have changed Phase 1 outputs (summary.csv rows, best-model pick, misclassified figure names) and a 10k-image memory risk; all fixed in the plan (D-037).
+- Next: v2/01.
+
 <!-- Newest first. 2–4 lines per session. Keep only the last ~10 sessions; older ones are in git history. -->
 ### 2026-10-26 (v1 end-to-end audit + README, lead)
 - Audited code, results and every doc against each other: interfaces, 27 result files, test log (12 rows), split MD5 and all 32 figures consistent. Fixed outdated docs (architecture, system-design, interfaces, formats, PRD facts), completed 7 older decision entries, added a D-029 pointer in notebook 04.
@@ -97,5 +109,5 @@ each phase starts. Full workflow: [`AGENTS.md`](../AGENTS.md) §6.
 - IEEE LaTeX report (`report/`) and presentation slides inside the repo. Planned after v1 code is done.
 - PCA-reduced pixels as a third feature set (faster SVM/kNN; curse-of-dimensionality demo).
 - LBP texture features; L1 vs L2 Logistic Regression.
-- Capstone Phase 2 as `docs/phases/v2/`: small CNN on the same split + `evaluate()`, ablations (blocks, dropout,
-  augmentation), hybrid CNN-features → SVM or HOG + CNN fusion aimed at shirt/T-shirt/pullover confusion.
+- v2 extras left out of scope: dropout-off ablation, hybrid CNN-features → RBF SVM (`rbf_svm_cnn`), first-layer
+  filter and feature-map visualizations, augmentation and batch-norm ablations.
