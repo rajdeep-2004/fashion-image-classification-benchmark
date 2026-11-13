@@ -115,7 +115,8 @@ metrics = final_test_run("knn", make_knn, best, kind="hog")
 | `CNN2()`, `CNN3()` | — | `nn.Module` | Layers in D-034; dropout `CNN_DROPOUT` |
 | `count_params(model)` | `nn.Module` | int | Trainable parameters: 421,642 (CNN2), 241,546 (CNN3) |
 | `CNNPredictor(model)` | trained `nn.Module` | object with `.predict(X)` and `.model` | `predict` takes (N, 28, 28) float32, returns int64 class indices; `eval()` + `no_grad()`, batches of `CNN_PREDICT_BATCH` |
-| `train_cnn(name, model, loaders)` | `"cnn2"`/`"cnn3"`, fresh model, `make_loaders()` output | val summary dict (`data-formats.md` §13) | Adam + cross-entropy, early stopping on val loss, restores best weights in `model`. Writes `models/{name}_images_best.pt`, `results/training/{name}_images_history.csv`, `results/metrics/{name}_images_val.json` |
+| `training_settings()` | — | dict | The fixed settings (batch size, lr, max epochs, patience, dropout, optimizer) stored in the val and test JSONs |
+| `train_cnn(name, model, loaders)` | `"cnn2"`/`"cnn3"`, fresh model, `make_loaders()` output | val summary dict (`data-formats.md` §13) | Adam + cross-entropy, early stopping on val loss, restores best weights in `model`. Call `utils.set_seed()` before building `model`. Writes `models/{name}_images_best.pt`, `results/training/{name}_images_history.csv`, `results/metrics/{name}_images_val.json` |
 
 ### `src/experiment.py`
 | Function | Takes | Returns | Side effects |
