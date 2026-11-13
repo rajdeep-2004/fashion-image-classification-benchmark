@@ -1,19 +1,23 @@
 """Running experiments: tune on val, then one final test evaluation (F-08).
 
-This is the ONLY module that loads test features, and only inside final_test_run(). tune_on_val() has no way
-to receive test data. See docs/system-design.md Flow C and §3, docs/decisions.md D-004, D-005, D-018.
+This is the ONLY module that loads test data, and only inside final_test_run() and final_test_run_cnn() (Phase 2).
+tune_on_val() has no way to receive test data. See docs/system-design.md Flow C and §3, docs/decisions.md D-004, D-005, D-018.
 """
 import csv
+import json
 from datetime import datetime
 
 import numpy as np
 import pandas as pd
+import torch
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import ParameterGrid, StratifiedKFold, cross_val_score, train_test_split
 
 from src import config, features
+from src.cnn import CNNPredictor
+from src.data import load_splits
 from src.evaluate import evaluate
-from src.utils import Timer, save_json
+from src.utils import Timer, display_path, save_json
 
 
 def _now() -> str:
@@ -115,6 +119,28 @@ def final_test_run(name: str, make_fn, params: dict, kind: str) -> dict:
 
     X_test, y_test = features.get_features(kind, "test"), features.get_labels("test")  # the only test access
     metrics = evaluate(model, X_test, y_test, name, kind, params, t.seconds)
+    _log_test_use(metrics["experiment"], metrics["accuracy"])
+    return metrics
+
+
+def final_test_run_cnn(name: str, model: torch.nn.Module) -> dict:
+    """Load a trained CNN's best checkpoint, evaluate it ONCE on test with the shared evaluate(), log it (D-035, D-037).
+
+    `model` is a fresh CNN2() or CNN3() matching `name`. The CNN is not refit: it was trained on the 54k train split,
+    and its training time and settings come from its val JSON. The only Phase 2 code that reads the test images.
+    """
+    experiment = f"{name}_images"
+    val_path = config.METRICS_DIR / f"{experiment}_val.json"
+    checkpoint = config.MODELS_DIR / f"{experiment}_best.pt"
+    if not val_path.exists() or not checkpoint.exists():
+        raise RuntimeError(f"Missing {display_path(val_path)} or {display_path(checkpoint)}: delete the val JSON and "
+                           f"re-run the training cell of notebook 06 first (same numbers, D-041).")
+    trained = json.loads(val_path.read_text())
+    model.load_state_dict(torch.load(checkpoint, weights_only=True))
+
+    splits = load_splits(verbose=False)  # the only test access in Phase 2
+    metrics = evaluate(CNNPredictor(model), splits["X_test"], splits["y_test"], name, "images",
+                       trained["settings"], trained["train_time_s"])
     _log_test_use(metrics["experiment"], metrics["accuracy"])
     return metrics
 
