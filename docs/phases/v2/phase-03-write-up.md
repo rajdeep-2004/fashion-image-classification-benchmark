@@ -38,7 +38,7 @@ macro F1 0.9208 vs `rbf_svm_hog` 91.08% / 0.9108; Shirt recall unchanged (75.1% 
 
 ## Tasks
 - [x] 03.1 — README Phase 2 section → `docs(readme): add Phase 2 CNN results`
-- [ ] 03.2 — IEEE report in `report/v2/` → `docs(report): Phase 2 report`
+- [x] 03.2 — IEEE report in `report/v2/` → `docs(report): Phase 2 report`
 - [ ] 03.3 — slides in `report/v2/` → `docs(report): Phase 2 slides`
 - [ ] 03.4 — final docs check, fill the phase summary; tag `v2.0.0` after merge → `docs(phase-v2-03): close phase`
 
