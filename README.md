@@ -196,7 +196,7 @@ many of these images are ambiguous in the data itself.
 - **Scoring always runs with dropout off** (`model.eval()` and `torch.no_grad()`).
 - **Phase 2 never rewrites Phase 1 outputs:** `summary.csv` keeps its 12 rows; all 14 models are in `summary_all.csv`.
 
-Every design choice and its reasoning is logged in [`docs/decisions.md`](docs/decisions.md) (D-001 to D-042).
+Every design choice and its reasoning is logged in [`docs/decisions.md`](docs/decisions.md) (D-001 to D-043).
 
 ## 8. Limitations (Phase 1)
 - **Grid edges:** the best C sits at the edge of the values tried for Logistic Regression and Linear SVM (0.01, smallest) and

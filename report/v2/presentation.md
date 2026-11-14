@@ -356,7 +356,7 @@ new features); check the shared errors for label noise.
 
 **What makes this trustworthy:** the same split and evaluation code as Phase 1; no test loader and a 14-row audit log;
 every choice on validation with rules set before training; deterministic, reproducible training; and a decision log
-(`docs/decisions.md`, D-033 to D-042 for Phase 2) explaining every choice.
+(`docs/decisions.md`, D-033 to D-043 for Phase 2) explaining every choice.
 
 ### Full Phase 2 results (from `results/summary_all.csv`)
 | Experiment | Val acc | Test acc | Macro F1 | Shirt recall | Inference ms / 1,000 | Size |
