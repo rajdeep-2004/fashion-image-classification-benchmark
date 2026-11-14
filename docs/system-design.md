@@ -167,3 +167,11 @@ If they get too slow, the mitigation is the documented subset, or PCA-reduced pi
 | Slow training on the laptop | Epoch time in the history CSV | Expected a few minutes per model on an M3 CPU; Colab CPU as fallback (record the device) |
 
 Trade-off accepted: CNNs learn from 54k images while Phase 1 models were refit on 60k (D-035); this can only favour Phase 1.
+
+### Flow F: Hybrid CNN features + RBF SVM (notebook 08, D-044)
+1. `features.get_features("cnn", split)` loads CNN3's checkpoint (`cnn.load_trained`) and caches its 128 last-hidden-layer
+   activations per image. CNN3 is frozen: its weights came from the 54k train split only.
+2. Phase 1 RBF SVM protocol, unchanged: `tune_on_val` (10k subset, `RBF_SVM_GRID`), `full_train_val_score` (54k),
+   `final_test_run` (60k refit, one test evaluation, logged).
+3. Leakage: extracting features fits nothing; test features are only read inside `final_test_run`. The `features`
+   filter in `results.py` keeps the hybrid (model `rbf_svm`) out of Phase 1's `summary.csv` and best-model pick.

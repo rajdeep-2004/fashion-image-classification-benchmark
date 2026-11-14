@@ -132,8 +132,21 @@ metrics = final_test_run("knn", make_knn, best, kind="hog")
   `FEATURE_ORDER` adds `images`.
 - `load_all_metrics(split="test", models=V1_MODELS)`, `pick_best_experiment(models=V1_MODELS)`,
   `build_summary(models=V1_MODELS, filename="summary.csv")`: defaults reproduce Phase 1 exactly; v2 calls
-  `build_summary(models=MODEL_ORDER, filename="summary_all.csv")` (D-037).
+  `build_summary(models=MODEL_ORDER, filename="summary_all.csv")` (D-037). A `features` filter was added in v2/04 (below).
 - `plot_misclassified(experiment, true_c, pred_c, n=16, tag="")`: a non-empty `tag` gives
   `errors_misclassified_{tag}_{true}_vs_{pred}.png`, so v2 never overwrites a Phase 1 figure.
-- `plot_recall_comparison(experiments)` (new): grouped bars of per-class test recall for the given experiments;
-  saves `cnn_recall_vs_classical.png`.
+- `plot_recall_comparison(experiments, name="cnn_recall_vs_classical", title=...)` (new): grouped bars of per-class
+  test recall for the given experiments; saves `{name}.png`.
+
+## v2/04 additions (hybrid: CNN3 features + RBF SVM, D-044)
+- `config.CNN_FEATURES_FROM = "cnn3"`: the network whose features form the `cnn` feature set.
+- `cnn.ARCHITECTURES = {"cnn2": CNN2, "cnn3": CNN3}`.
+- `cnn.load_trained(name)` → `nn.Module` in eval mode with the best weights from `models/{name}_images_best.pt`
+  (`RuntimeError` if missing). Never retrains.
+- `cnn.extract_cnn_features(model, X)`: (N, 28, 28) float32 → (N, 128) float32, every layer except the final Dropout and
+  Linear(128, 10); eval mode, `no_grad()`, batches of `CNN_PREDICT_BATCH`.
+- `features.KINDS` adds `"cnn"`; `get_features("cnn", split)` caches `features/cnn3_{split}.npy`. Every Phase 1
+  function that takes `kind` (`tune_on_val`, `full_train_val_score`, `final_test_run`) works on it unchanged.
+- `results.V1_FEATURES = ["pixels", "hog"]`; `FEATURE_ORDER` adds `cnn`. `load_all_metrics`, `pick_best_experiment` and
+  `build_summary` take `features=V1_FEATURES` as well, because the hybrid's model name is `rbf_svm`. v2 calls
+  `build_summary(models=MODEL_ORDER, filename="summary_all.csv", features=FEATURE_ORDER)`.

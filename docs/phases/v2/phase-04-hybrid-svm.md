@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | in-progress |
+| Status | review |
 | Branch | `phase/v2-04-hybrid-svm` |
 | Depends on | Phase v2/02 (CNN3 checkpoint and test results) |
 | PRD features | F-22 |
@@ -37,16 +37,25 @@ notebook 06, D-041).
 ## Tasks
 - [x] 04.1 — CNN features, `features` filter in `results.py`, D-044 → `feat(hybrid): CNN3 features as a feature set`
 - [x] 04.2 — notebook 08: tune, val score, test run, comparison → `feat(hybrid): RBF SVM on CNN3 features`
-- [ ] 04.3 — README, docs, phase summary → `docs(phase-v2-04): close phase`
+- [x] 04.3 — README, docs, phase summary → `docs(phase-v2-04): close phase`
 
 ## Done criteria
-- [ ] `test_log.csv` 15 rows, `rbf_svm_cnn` once; Phase 1 outputs byte-identical.
-- [ ] Notebook 08 runs top-to-bottom with no errors.
-- [ ] Docs match what was built; decisions logged.
+- [x] `test_log.csv` 15 rows, `rbf_svm_cnn` once; Phase 1 outputs byte-identical.
+- [x] Notebook 08 runs top-to-bottom with no errors.
+- [x] Docs match what was built; decisions logged.
 
 ## How to verify
 1. Run notebooks 06, 07 and 08 top-to-bottom; `git status` shows no change to Phase 1 files.
 2. `results/test_log.csv` has 15 rows, each experiment once.
 
 ## Phase summary
-(filled at close)
+- **Built:** feature kind `cnn` (CNN3's 128 last-hidden-layer activations, `cnn.load_trained`,
+  `cnn.extract_cnn_features`); a `features` filter in `results.py`; notebook 08 with the `rbf_svm_cnn` experiment,
+  comparison and RQ9 answer; README, PRD (RQ9, F-22), interfaces, formats, system design, D-044 (written before the
+  run) and D-045.
+- **Result:** `rbf_svm_cnn` val 0.9313, test 92.44% (CI 91.91–92.94), macro F1 0.9241, 756 errors; vs CNN3 p = 0.012,
+  vs `rbf_svm_hog` p = 5.2 × 10⁻⁷. Shirt recall 73.8%. ~0.6 s per 1,000 images end to end, 8.7 MB + CNN3.
+- **Verified:** fresh clone runs notebooks 01–08 in ~2 min with 0 errors; `test_log.csv` 15 rows, each experiment
+  once; `summary.csv` 12 rows and every Phase 1 file unchanged (only `eda_tsne.png` differs, D-043).
+- **Known limitations:** one CNN run; the hybrid's SVM saw 60k images vs CNN3's 54k; the report, slides and viva
+  walkthrough in `report/v2/` do not include the hybrid yet.

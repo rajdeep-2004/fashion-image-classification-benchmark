@@ -58,6 +58,7 @@ Rules:
 | D-042 | 2026-11-14 | v2/02 | CNN vs classical comparison: models, example pairs and end-to-end time | Active |
 | D-043 | 2026-11-14 | v2/03 | t-SNE figure not byte-identical after adding PyTorch; committed figure kept | Active |
 | D-044 | 2026-11-14 | v2/04 | Hybrid model: CNN3's learned features fed to the Phase 1 RBF SVM protocol | Active |
+| D-045 | 2026-11-14 | v2/04 | Hybrid result: 92.44%, mostly a features effect; CNN3 stays the recommended model | Active |
 
 ---
 
@@ -2118,4 +2119,59 @@ experiment therefore answers both "is it the features?" and "is it the head?".
 
 **Revisit if**
 The CNN is retrained (the cached `features/cnn3_*.npy` must then be deleted), or a different final CNN is chosen.
+
+### D-045 — Hybrid result: 92.44%, mostly a features effect; CNN3 stays the recommended model
+- **Date:** 2026-11-14
+- **Phase:** v2/04 — Hybrid CNN Features + RBF SVM
+- **Status:** Active
+- **Type:** algorithm
+
+**Context**
+The protocol fixed in D-044 was run once in notebook 08. This entry records the outcome and how it is reported.
+
+**Decision**
+Report `rbf_svm_cnn` as the most accurate model in the study, attribute most of Phase 2's gain to the learned features,
+and keep CNN3 as the recommended model because the hybrid's small gain costs about 6× the prediction time and 10× the
+size.
+
+**Alternatives considered**
+| Option | Why not chosen |
+|---|---|
+| Call the hybrid the new "final model" | D-044 fixed in advance that it is an extra comparison; it is also tied with CNN3 on validation (0.9313 vs 0.9308) |
+| Refit the hybrid's SVM on 54k only, to match CNN3's training data | Would need a second test run of the same idea; stated as a limitation instead |
+| Drop the result because it complicates the story | A pre-registered experiment is reported whatever it shows |
+
+**Why**
+The two clean comparisons point the same way: changing the features under the same RBF SVM is worth +1.36 test points
+(HOG → CNN3 features), changing the classifier on the same features is worth +0.35. Both are significant by McNemar's
+test, but the second is small, not visible on validation, and partly confounded by the extra 6k training images.
+
+**How it works**
+1. Tuning (10k subset): C = 1, gamma = "scale" (val 0.9292); all nine combinations scored 0.9148–0.9292. Each fit
+   took under 1.5 s, against minutes for HOG, because the features have 128 dimensions instead of 1,728.
+2. Refit on 54k: val 0.9313 (CNN3 0.9308, `rbf_svm_hog` 0.9157). Refit on 60k and one test run: **92.44%**
+   (Wilson 95% CI 91.91–92.94), macro F1 0.9241, 756 errors. `test_log.csv` now has 15 rows.
+3. McNemar (continuity-corrected): hybrid vs CNN3 110 vs 75, χ² = 6.25, p = 0.012; hybrid vs `rbf_svm_hog`
+   430 vs 294, χ² = 25.2, p = 5.2 × 10⁻⁷.
+4. Shirt recall 73.8% (CNN3 75.1%, SVM 75.2%); Shirt → T-shirt/top 117 (CNN3 110). Largest gains over CNN3: Dress
+   +2.5 and Coat +1.5 points. Errors among the four tops: 68.9% of all errors (CNN3 68.1%, SVM 64.2%). The hybrid and
+   CNN3 share 681 errors, 659 with the same wrong label.
+5. Cost: SVM prediction 491 ms per 1,000 images on precomputed features plus ~118 ms for CNN3 features ≈ 0.6 s end to
+   end (CNN3 alone 94 ms, `rbf_svm_hog` ~29.1 s). Size 8.7 MB (7,919 support vectors) plus the CNN3 layers.
+6. A fresh clone runs notebooks 01–08 in about 2 minutes with no errors; without the CNN3 checkpoint, notebook 08 skips
+   only the feature check and timing cell and shows the saved results.
+
+**Files touched**
+- `notebooks/08_hybrid_cnn_svm.ipynb`, `results/metrics/rbf_svm_cnn_{val,val_full,test}.json`, `results/test_log.csv`,
+  `results/summary_all.csv`, `results/figures/hybrid_recall_vs_cnn3.png`, `README.md`, docs listed in phase v2/04
+
+**Concepts worth learning**
+- **Confound:** a second difference (here 60k vs 54k training images) that could explain part of an effect.
+- **Statistical vs practical significance:** p = 0.012 says the 0.35-point gain is unlikely to be luck on this test
+  set; it does not say the gain is worth 6× the prediction time.
+- **Kernel SVM cost scales with support vectors × feature dimension:** fewer, shorter vectors make the hybrid ~59×
+  faster at prediction than the SVM on HOG.
+
+**Revisit if**
+Multi-seed CNN runs are added (the 0.35-point gap may fall within seed variation), or deployment cost stops mattering.
 

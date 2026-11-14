@@ -146,7 +146,9 @@ flowchart LR
 
 New layout entries: `src/cnn.py`; `notebooks/06_cnn_training.ipynb` (training, model choice, the two test runs),
 `notebooks/07_cnn_vs_classical.ipynb` (comparison and error analysis from saved files); `results/training/`;
-`results/summary_all.csv`; `models/` (gitignored); `report/v2/`.
+`results/summary_all.csv`; `models/` (gitignored); `report/v2/`. v2/04 adds `notebooks/08_hybrid_cnn_svm.ipynb` and the
+`cnn` feature set (`features/cnn3_*.npy`, from `cnn.extract_cnn_features`), which `features.py` builds from the CNN3
+checkpoint; `features` therefore depends on `cnn` (D-044).
 
 Stack: PyTorch `torch==2.15.0`, CPU only (D-036, D-039). New config constants: `CNN_BATCH_SIZE = 64`, `CNN_LR = 0.001`,
 `CNN_MAX_EPOCHS = 30`, `CNN_PATIENCE = 5`, `CNN_DROPOUT = 0.5`, `CNN_PREDICT_BATCH = 1000`, `MODELS_DIR`, `TRAINING_DIR`.
