@@ -79,6 +79,9 @@ class CNN3(nn.Sequential):
         )
 
 
+ARCHITECTURES = {"cnn2": CNN2, "cnn3": CNN3}
+
+
 def count_params(model: nn.Module) -> int:
     """Number of trainable weights and biases."""
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -104,6 +107,35 @@ class CNNPredictor:
                 batch = _to_tensor(np.ascontiguousarray(X[start:start + config.CNN_PREDICT_BATCH]))
                 preds.append(self.model(batch).argmax(dim=1).numpy())
         return np.concatenate(preds).astype(np.int64)
+
+
+def load_trained(name: str) -> nn.Module:
+    """A CNN with the best weights saved by train_cnn(), in eval mode (dropout off). Never retrains."""
+    checkpoint = config.MODELS_DIR / f"{name}_images_best.pt"
+    if not checkpoint.exists():
+        raise RuntimeError(f"Missing {display_path(checkpoint)}: delete results/metrics/{name}_images_val.json and "
+                           f"re-run the training cell of notebook 06 (same weights, D-041).")
+    model = ARCHITECTURES[name]()
+    model.load_state_dict(torch.load(checkpoint, weights_only=True))
+    return model.eval()
+
+
+def extract_cnn_features(model: nn.Module, X: np.ndarray) -> np.ndarray:
+    """(N, 28, 28) images -> (N, 128) float32: the last hidden layer (Dense 128 + ReLU), the network's learned features.
+
+    Dropping the last two layers (Dropout, Linear(128, 10)) removes the classifier head, so the output is exactly what
+    that head would see (D-044). Eval mode, no gradients, 1,000 images at a time, like CNNPredictor.
+    """
+    if X.ndim != 3 or X.shape[1:] != (config.IMAGE_SIZE, config.IMAGE_SIZE):
+        raise ValueError(f"Expected images of shape (N, 28, 28), got {X.shape}")
+    _use_cpu_threads()
+    body = nn.Sequential(*list(model)[:-2]).eval()  # plain Sequential: slicing CNN3 itself would call CNN3(...)
+    out = []
+    with torch.no_grad():
+        for start in range(0, len(X), config.CNN_PREDICT_BATCH):
+            batch = _to_tensor(np.ascontiguousarray(X[start:start + config.CNN_PREDICT_BATCH]))
+            out.append(body(batch).numpy())
+    return np.concatenate(out).astype(np.float32)
 
 
 # --- 4. Training with early stopping (D-034, D-035) ----------------------------------------

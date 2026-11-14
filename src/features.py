@@ -1,7 +1,8 @@
-"""Feature extraction: raw pixels and HOG, cached on disk in features/.
+"""Feature extraction: raw pixels, HOG and (Phase 2) CNN features, cached on disk in features/.
 
-Both extractors are fixed formulas applied to each image on its own. Nothing is *fitted* here, so computing them
-on val/test cannot leak information. Scaling happens later, inside each model's Pipeline (D-004).
+Pixels and HOG are fixed formulas applied to each image on its own. CNN features are the last hidden layer of the
+final CNN, whose weights were learned on the 54k train split only (D-044). Nothing is *fitted* here, so computing any
+of them on val/test cannot leak information. Scaling happens later, inside each model's Pipeline (D-004).
 See docs/data-formats.md §5 and docs/module-interfaces.md.
 """
 import itertools
@@ -16,10 +17,11 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from src import config
+from src.cnn import extract_cnn_features, load_trained
 from src.utils import display_path
 from src.data import load_splits
 
-KINDS = ("pixels", "hog")
+KINDS = ("pixels", "hog", "cnn")
 SPLITS = ("train", "val", "trainval", "test")  # trainval = train rows followed by val rows (60k)
 
 
@@ -72,7 +74,8 @@ def hog_tag(params: dict) -> str:
 
 
 def _cache_path(kind: str, split: str):
-    prefix = "pixels" if kind == "pixels" else f"hog_{hog_tag(config.HOG_PARAMS)}"
+    prefixes = {"pixels": "pixels", "hog": f"hog_{hog_tag(config.HOG_PARAMS)}", "cnn": config.CNN_FEATURES_FROM}
+    prefix = prefixes[kind]
     return config.FEATURES_DIR / f"{prefix}_{split}.npy"
 
 
@@ -82,6 +85,14 @@ def _split_arrays(split: str):
     if split == "trainval":
         return np.concatenate([s["X_train"], s["X_val"]]), np.concatenate([s["y_train"], s["y_val"]])
     return s[f"X_{split}"], s[f"y_{split}"]
+
+
+def _extract(kind: str, X: np.ndarray) -> np.ndarray:
+    if kind == "pixels":
+        return extract_pixels(X)
+    if kind == "hog":
+        return extract_hog(X, **config.HOG_PARAMS)
+    return extract_cnn_features(load_trained(config.CNN_FEATURES_FROM), X)
 
 
 def get_features(kind: str, split: str) -> np.ndarray:
@@ -95,7 +106,7 @@ def get_features(kind: str, split: str) -> np.ndarray:
         features = np.concatenate([get_features(kind, "train"), get_features(kind, "val")])
     else:
         X, _ = _split_arrays(split)
-        features = extract_pixels(X) if kind == "pixels" else extract_hog(X, **config.HOG_PARAMS)
+        features = _extract(kind, X)
 
     path.parent.mkdir(parents=True, exist_ok=True)
     np.save(path, features)

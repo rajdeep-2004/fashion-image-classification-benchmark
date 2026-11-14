@@ -57,6 +57,7 @@ Rules:
 | D-041 | 2026-11-14 | v2/01 | train_cnn seeds and builds its own model and loaders (reproducibility fix) | Active |
 | D-042 | 2026-11-14 | v2/02 | CNN vs classical comparison: models, example pairs and end-to-end time | Active |
 | D-043 | 2026-11-14 | v2/03 | t-SNE figure not byte-identical after adding PyTorch; committed figure kept | Active |
+| D-044 | 2026-11-14 | v2/04 | Hybrid model: CNN3's learned features fed to the Phase 1 RBF SVM protocol | Active |
 
 ---
 
@@ -2052,3 +2053,69 @@ summation order.
 
 **Revisit if**
 A reported number (not an exploratory figure) ever changes between runs.
+
+### D-044 — Hybrid model: CNN3's learned features fed to the Phase 1 RBF SVM protocol
+- **Date:** 2026-11-14
+- **Phase:** v2/04 — Hybrid CNN Features + RBF SVM
+- **Status:** Active
+- **Type:** algorithm
+
+**Context**
+Phase 2 showed that CNN3 beats the RBF SVM on HOG (92.09% vs 91.08%), but it changed two things at once: the features
+(learned instead of handcrafted) and the classifier (a softmax layer instead of an RBF SVM). The hybrid separates the
+two. It was parked as out of scope in v2 planning (D-033) and is now added as a fourth v2 phase. This entry was written
+and committed before any tuning or test run of the hybrid, so the protocol cannot be shaped by its results.
+
+**Decision**
+Use the last hidden layer of the final CNN (CNN3, D-040) as a third feature set, `cnn` (128 numbers per image), and run
+the RBF SVM on it with exactly the Phase 1 protocol. The experiment is `rbf_svm_cnn`. It answers a new question, RQ9:
+does an RBF SVM on CNN3's features beat CNN3's own softmax head? It is reported as an extra comparison; it does not
+reopen the choice of the final CNN.
+
+**Alternatives considered**
+| Option | Why not chosen |
+|---|---|
+| Features from CNN2, or from both CNNs | CNN3 is the chosen final CNN; using both doubles the test runs for a question about the head, not the depth |
+| A different layer (the 1,152 flattened conv outputs) | The 128-unit layer is exactly what the softmax head sees, so the comparison changes only the classifier |
+| Linear SVM or kNN on the CNN features | The RBF SVM is Phase 1's best classifier; one hybrid keeps the scope minimal |
+| Retrain or fine-tune the CNN for the hybrid | The features would no longer be CNN3's; the network stays frozen |
+| A new, larger tuning grid | Phase 1's grid and 10k tuning subset keep the hybrid comparable with `rbf_svm_pixels` and `rbf_svm_hog` |
+
+**Why**
+With the network frozen, the only difference between CNN3 and `rbf_svm_cnn` is the classifier on top of the same 128
+features; the only difference between `rbf_svm_hog` and `rbf_svm_cnn` is the features under the same classifier. One
+experiment therefore answers both "is it the features?" and "is it the head?".
+
+**How it works**
+1. `cnn.load_trained("cnn3")` loads the saved best weights (`models/cnn3_images_best.pt`) in eval mode; nothing is
+   retrained. `cnn.extract_cnn_features()` runs every layer except the final Dropout and Linear(128, 10), so the output
+   is the 128 ReLU activations the softmax head would receive. A check on val: applying CNN3's own head to the
+   extracted features gives 0.9308, the same as CNN3's val accuracy, so the features are the right ones.
+2. `features.get_features("cnn", split)` caches them as `features/cnn3_{split}.npy`, exactly like pixels and HOG.
+3. Phase 1 protocol, unchanged (D-005, D-027, D-029): tune `RBF_SVM_GRID` (C × gamma, 9 combinations) on a stratified
+   10k subset of train, scored on val; refit the chosen parameters on all 54k train images and score on val; then
+   `final_test_run()` refits on all 60k (train + val) and evaluates on test once. `test_log.csv` gains one row (15).
+4. Leakage check: CNN3's weights were learned from the 54k train images only; val was used only for early stopping and
+   the test set never. Extracting features fits nothing. The SVM is tuned on val and tested once, like every model.
+5. A known bias, stated in advance: CNN3 saw the train images during training, so their features are slightly
+   "easier" than val or test features (CNN3's train accuracy at its best epoch was about half a point above val). The
+   SVM is fitted on these features, which is why it is scored on val before the test run.
+6. Timing and size follow Phase 1's HOG rule: `evaluate()` times the SVM on precomputed features, and the notebook
+   reports the feature-extraction time separately, so end-to-end cost = CNN3 features + SVM prediction.
+7. `results.py` gains a `features` filter (default: pixels and HOG), because the hybrid's model name is `rbf_svm`.
+   Without it, Phase 1's `summary.csv` and best-model pick would include the hybrid. `summary_all.csv` gets 15 rows.
+
+**Files touched**
+- `src/cnn.py` (`ARCHITECTURES`, `load_trained`, `extract_cnn_features`), `src/features.py` (kind `cnn`),
+  `src/config.py` (`CNN_FEATURES_FROM`), `src/results.py` (`V1_FEATURES`, `features` argument)
+- `notebooks/08_hybrid_cnn_svm.ipynb`, `notebooks/06_cnn_training.ipynb` (summary call), docs listed in phase v2/04
+
+**Concepts worth learning**
+- **Feature extractor + classifier:** a CNN can be read as learned features (all layers but the last) plus a linear
+  softmax classifier; any classifier can replace the last part.
+- **Frozen network:** its weights are not updated, so it acts as a fixed feature formula, like HOG.
+- **Ablation:** change one component at a time to see which one causes a difference.
+
+**Revisit if**
+The CNN is retrained (the cached `features/cnn3_*.npy` must then be deleted), or a different final CNN is chosen.
+

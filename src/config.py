@@ -55,5 +55,6 @@ CNN_MAX_EPOCHS = 30        # upper bound; early stopping usually ends sooner
 CNN_PATIENCE = 5           # stop after this many epochs without a lower val loss
 CNN_DROPOUT = 0.5          # dropout before the last layer
 CNN_PREDICT_BATCH = 1000   # images per forward pass when predicting (bounds memory)
+CNN_FEATURES_FROM = "cnn3"  # the final CNN (D-040); its last hidden layer feeds the hybrid RBF SVM (D-044)
 MODELS_DIR = ROOT / "models"             # best checkpoints (gitignored)
 TRAINING_DIR = RESULTS_DIR / "training"  # per-epoch history CSVs

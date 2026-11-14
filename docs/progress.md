@@ -1,7 +1,7 @@
 # Progress
 
-**Current phase:** v2/03 (review). v2/01 and v2/02 done. **v1 is complete** and tagged `v1.0.0`. v2 (Capstone Phase 2, CNN) is planned.
-**Branch:** phase/v2-03-write-up
+**Current phase:** v2/04 (in-progress); v2/03 (review). v2/01 and v2/02 done. **v1 is complete** and tagged `v1.0.0`. v2 (Capstone Phase 2, CNN) is planned.
+**Branch:** phase/v2-04-hybrid-svm
 **Profile:** lean
 
 ## Phases
@@ -20,6 +20,7 @@
 | 01 | [CNN Models & Training](phases/v2/phase-01-cnn-training.md) | done | phase/v2-01-cnn-training | 2026-11-14 | 2026-11-14 |
 | 02 | [CNN Test Evaluation & Comparison](phases/v2/phase-02-evaluation-comparison.md) | done | phase/v2-02-evaluation-comparison | 2026-11-14 | 2026-11-14 |
 | 03 | [README, Report & Slides](phases/v2/phase-03-write-up.md) | review | phase/v2-03-write-up | 2026-11-14 | |
+| 04 | [Hybrid CNN Features + RBF SVM](phases/v2/phase-04-hybrid-svm.md) | in-progress | phase/v2-04-hybrid-svm | 2026-11-14 | |
 
 Status values: `not-started` → `in-progress` → `review` → `done`
 
@@ -124,5 +125,5 @@ each phase starts. Full workflow: [`AGENTS.md`](../AGENTS.md) §6.
 - IEEE LaTeX report (`report/`) and presentation slides inside the repo. Planned after v1 code is done.
 - PCA-reduced pixels as a third feature set (faster SVM/kNN; curse-of-dimensionality demo).
 - LBP texture features; L1 vs L2 Logistic Regression.
-- v2 extras left out of scope: dropout-off ablation, hybrid CNN-features → RBF SVM (`rbf_svm_cnn`), first-layer
+- v2 extras left out of scope: dropout-off ablation, first-layer
   filter and feature-map visualizations, augmentation and batch-norm ablations.
