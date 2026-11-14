@@ -1,0 +1,108 @@
+{
+ "experiment": "rbf_svm_cnn",
+ "model": "rbf_svm",
+ "features": "cnn",
+ "split": "val",
+ "train_subset": 10000,
+ "grid": {
+  "C": [
+   0.1,
+   1,
+   10
+  ],
+  "gamma": [
+   "scale",
+   0.01,
+   0.001
+  ]
+ },
+ "rows": [
+  {
+   "params": {
+    "C": 0.1,
+    "gamma": "scale"
+   },
+   "fit_s": 0.54,
+   "val_acc": 0.9253,
+   "val_macro_f1": 0.9252
+  },
+  {
+   "params": {
+    "C": 0.1,
+    "gamma": 0.01
+   },
+   "fit_s": 0.54,
+   "val_acc": 0.9247,
+   "val_macro_f1": 0.9246
+  },
+  {
+   "params": {
+    "C": 0.1,
+    "gamma": 0.001
+   },
+   "fit_s": 1.32,
+   "val_acc": 0.9148,
+   "val_macro_f1": 0.9148
+  },
+  {
+   "params": {
+    "C": 1,
+    "gamma": "scale"
+   },
+   "fit_s": 0.26,
+   "val_acc": 0.9292,
+   "val_macro_f1": 0.9291
+  },
+  {
+   "params": {
+    "C": 1,
+    "gamma": 0.01
+   },
+   "fit_s": 0.23,
+   "val_acc": 0.9288,
+   "val_macro_f1": 0.9288
+  },
+  {
+   "params": {
+    "C": 1,
+    "gamma": 0.001
+   },
+   "fit_s": 0.42,
+   "val_acc": 0.926,
+   "val_macro_f1": 0.9259
+  },
+  {
+   "params": {
+    "C": 10,
+    "gamma": "scale"
+   },
+   "fit_s": 0.21,
+   "val_acc": 0.9287,
+   "val_macro_f1": 0.9289
+  },
+  {
+   "params": {
+    "C": 10,
+    "gamma": 0.01
+   },
+   "fit_s": 0.2,
+   "val_acc": 0.9287,
+   "val_macro_f1": 0.9289
+  },
+  {
+   "params": {
+    "C": 10,
+    "gamma": 0.001
+   },
+   "fit_s": 0.21,
+   "val_acc": 0.929,
+   "val_macro_f1": 0.929
+  }
+ ],
+ "best_params": {
+  "C": 1,
+  "gamma": "scale"
+ },
+ "best_val_acc": 0.9292,
+ "timestamp": "2026-11-14T17:22:13"
+}

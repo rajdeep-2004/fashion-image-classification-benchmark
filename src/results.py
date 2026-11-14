@@ -303,8 +303,9 @@ def model_agreement(exp_a: str, exp_b: str) -> dict:
 
 # --- 4. Phase 2: CNN vs classical models (D-037) ---------------------------------------
 
-def plot_recall_comparison(experiments: list) -> plt.Figure:
-    """Grouped bars of per-class test recall for the given experiments. Saves cnn_recall_vs_classical.png."""
+def plot_recall_comparison(experiments: list, name: str = "cnn_recall_vs_classical",
+                           title: str = "Per-class test recall: CNN vs classical models") -> plt.Figure:
+    """Grouped bars of per-class test recall for the given experiments. Saves {name}.png (default as in v2/02)."""
     recalls = {exp: _saved_test(exp)["per_class_recall"] for exp in experiments}
     x = np.arange(config.NUM_CLASSES)
     width = 0.8 / len(experiments)
@@ -316,9 +317,9 @@ def plot_recall_comparison(experiments: list) -> plt.Figure:
     ax.set_xticklabels(config.CLASS_NAMES, rotation=30, ha="right")
     ax.set_ylabel("Test recall (%)")
     ax.set_ylim(50, 100)
-    ax.set_title("Per-class test recall: CNN vs classical models")
+    ax.set_title(title)
     ax.grid(True, axis="y", linestyle="--", alpha=0.5)
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=len(experiments), frameon=False)
     fig.tight_layout()
-    utils.save_fig(fig, "cnn_recall_vs_classical")
+    utils.save_fig(fig, name)
     return fig

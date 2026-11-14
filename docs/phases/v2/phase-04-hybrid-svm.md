@@ -36,7 +36,7 @@ notebook 06, D-041).
 
 ## Tasks
 - [x] 04.1 — CNN features, `features` filter in `results.py`, D-044 → `feat(hybrid): CNN3 features as a feature set`
-- [ ] 04.2 — notebook 08: tune, val score, test run, comparison → `feat(hybrid): RBF SVM on CNN3 features`
+- [x] 04.2 — notebook 08: tune, val score, test run, comparison → `feat(hybrid): RBF SVM on CNN3 features`
 - [ ] 04.3 — README, docs, phase summary → `docs(phase-v2-04): close phase`
 
 ## Done criteria

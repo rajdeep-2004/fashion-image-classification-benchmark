@@ -1,0 +1,15 @@
+{
+ "experiment": "rbf_svm_cnn",
+ "model": "rbf_svm",
+ "features": "cnn",
+ "split": "val",
+ "train_rows": 54000,
+ "params": {
+  "C": 1,
+  "gamma": "scale"
+ },
+ "fit_s": 5.24,
+ "val_acc": 0.9313,
+ "val_macro_f1": 0.9312,
+ "timestamp": "2026-11-14T17:22:21"
+}
