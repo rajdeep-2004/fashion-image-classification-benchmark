@@ -30,6 +30,10 @@ reviewed by the repo owner (with Claude Code) against the phase file and docs �
 each phase starts. Full workflow: [`AGENTS.md`](../AGENTS.md) §6.
 
 ## Session log
+### 2026-11-17 (Shirt-class metrics)
+- Shirt precision, recall, F1 and top confusions for `rbf_svm_hog`, CNN2, CNN3 and the hybrid, read from the saved test JSONs (D-052). No new test use; `test_log.csv` still 15 rows.
+- Recall about 70–75% for every model; most errors go to T-shirt/top.
+
 ### 2026-11-16 (v2 final polish)
 - Report references cut to the three works the study builds on (Fashion-MNIST, the CNN–SVM paper, our Phase 1 report), Related Work rewritten around them, report compiled to `report/v2/report.pdf`; figure copies removed from `report/v2/` (D-049).
 - Phase 2 slide deck `report/v2/phase2_presentation.pptx` (31 slides, native charts) built; `presentation.md` rewritten slide by slide with a slide map and presenters; names only on the title slide (D-050).
