@@ -65,6 +65,7 @@ Rules:
 | D-049 | 2026-11-16 | v2/05 | Report cites the three works it builds on; Related Work tells one story; PDF committed | Active |
 | D-050 | 2026-11-16 | v2/05 | Phase 2 slide deck (.pptx) with a slide-by-slide team guide | Active |
 | D-051 | 2026-11-17 | v2/05 | Word-for-word speaker notes shared by the deck and the guide | Active |
+| D-052 | 2026-11-17 | v2/05 | Shirt-class metrics read from the saved test predictions | Active |
 
 ---
 
@@ -2455,3 +2456,69 @@ One text in two places lets members study from the guide and read the same words
 
 **Revisit if**
 A slide or its presenter changes: update the guide's block and the deck's notes together.
+
+### D-052 — Shirt-class metrics read from the saved test predictions
+- **Date:** 2026-11-17
+- **Phase:** v2/05 — Final Report
+- **Status:** Active
+- **Type:** data
+
+**Context**
+We were asked to test the models on the Shirt class and report its metrics. Shirt is the hardest class in the
+dataset, and the leakage rules allow only one test run per experiment (AGENTS.md §4, rule 1).
+
+**Decision**
+We report Shirt's metrics from the test JSONs already saved by `final_test_run()` / `final_test_run_cnn()`, without
+predicting on the test set again. `test_log.csv` is unchanged (15 rows).
+
+**Alternatives considered**
+| Option | Why not chosen |
+|---|---|
+| Re-run the models on the Shirt test images | A second test use per experiment; breaks rule 1 and gives the same numbers |
+| Score Shirt on the validation set | Val is for choices; the final numbers we report are test numbers |
+| Classify a real photo of a shirt | One out-of-distribution image has no label set, so it gives a prediction, not precision/recall/F1 |
+
+**Why**
+Every test JSON already stores per-class precision, recall, F1, the confusion matrix and `y_pred` (D-011). Reading
+them gives the exact Shirt numbers with no new test use.
+
+**How it works**
+1. Shirt is index 6 in `config.CLASS_NAMES`.
+2. For each model, open `results/metrics/<experiment>_test.json` and take element `[6]` of `per_class_precision`,
+   `per_class_recall` and `per_class_f1`.
+3. Row 6 of `confusion_matrix` shows where the 1,000 real shirts went: the diagonal entry is the number classified
+   correctly, the other entries are the mistakes.
+
+| Model | Precision | Recall | F1 | Correct / 1000 | Top 3 mistakes |
+|---|---|---|---|---|---|
+| `rbf_svm_hog` (best classical) | 0.753 | 0.752 | 0.752 | 752 | T-shirt/top 104, Coat 59, Pullover 52 |
+| `cnn2_images` | 0.798 | 0.698 | 0.745 | 698 | T-shirt/top 126, Coat 76, Pullover 56 |
+| `cnn3_images` (final CNN) | 0.774 | 0.751 | 0.762 | 751 | T-shirt/top 110, Coat 62, Pullover 52 |
+| `rbf_svm_cnn` (hybrid) | 0.788 | 0.738 | 0.762 | 738 | T-shirt/top 117, Pullover 58, Coat 58 |
+
+Shirt recall stays at about 70–75% for every model, while the other classes reach 88–99%. No model fixes it: the CNNs
+and the hybrid gain a little precision but not recall. Most errors go to T-shirt/top. The figure
+`results/figures/errors_misclassified_cnn3_images_shirt_vs_t-shirt_top.png` shows why: many "shirts" are short-sleeved,
+collarless or strappy tops that look like T-shirts at 28×28 pixels. The confusion matrices
+(`errors_confusion_<experiment>.png`) show the full Shirt row.
+
+To reproduce in a notebook:
+```python
+import json
+from src import config
+d = json.load(open(config.METRICS_DIR / "cnn3_images_test.json"))
+i = config.CLASS_NAMES.index("Shirt")
+print(d["per_class_precision"][i], d["per_class_recall"][i], d["per_class_f1"][i], d["confusion_matrix"][i])
+```
+
+**Files touched**
+- `docs/decisions.md`: this entry and its Index row.
+- `docs/progress.md`: session log.
+
+**Concepts worth learning**
+- **Per-class precision:** of the images predicted as Shirt, the share that really are shirts.
+- **Per-class recall:** of the real shirts, the share the model found.
+- **Confusion-matrix row:** where the images of one true class end up; off-diagonal cells are the errors.
+
+**Revisit if**
+A model is retrained and re-tested (with a logged reason), or Shirt metrics are needed for a model not listed here.
